@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - RePensei</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-purple-800 via-purple-500 to-purple-300 min-h-screen flex items-center justify-center p-4">
+
+    <div id="tela-inicio" class="tela ativa fade-in">
+        <div class="w-full max-w-2xl mx-auto p-10 rounded-3xl flex flex-col items-center glass shadow-2xl border-2 border-purple-200">
+            <div class="flex items-center gap-4 mb-6">
+                <svg width="56" height="56" viewBox="0 0 48 48" fill="none">
+                    <circle cx="24" cy="24" r="24" fill="#fff" fill-opacity="0.15" />
+                    <path d="M24 10L36 18V38H12V18L24 10Z" stroke="#fff" stroke-width="2" fill="#fff" fill-opacity="0.2" />
+                    <rect x="20" y="26" width="8" height="8" rx="2" fill="#fff" fill-opacity="0.7" />
+                </svg>
+                <h1 class="text-5xl font-extrabold text-white drop-shadow tracking-wide">Bem-vindo ao <span class="text-pink-300">RePensei</span></h1>
+            </div>
+            <p class="text-white text-lg mb-8 text-center drop-shadow font-medium">
+                Sua plataforma de estudos de Filosofia e Sociologia.<br>
+                Faça login ou crie sua conta para começar.
+            </p>
+            <div class="w-full flex flex-col sm:flex-row justify-center gap-6 mt-8">
+                <button onclick="abrirLogin()" class="btn-animado bg-gradient-to-r from-pink-400 to-purple-400 text-white text-xl md:text-2xl font-bold px-8 md:px-10 py-3 rounded-2xl shadow-md transition relative">
+                    <span class="material-icons align-middle mr-1">login</span> Login
+                </button>
+                <button onclick="abrirCriarConta()" class="btn-animado bg-gradient-to-r from-purple-400 to-pink-400 text-white text-xl md:text-2xl font-bold px-8 md:px-10 py-3 rounded-2xl shadow-md transition relative">
+                    <span class="material-icons align-middle mr-1">person_add</span> Criar conta
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalLogin" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center modal-anim border-2 border-purple-200 relative">
+            <button onclick="fecharLogin()" class="absolute top-4 right-4 text-purple-400 hover:text-pink-400 text-2xl z-10">
+                <span class="material-icons">close</span>
+            </button>
+            <h2 class="text-3xl font-extrabold text-purple-800 mb-6 tracking-wide">Entrar</h2>
+            <input type="email" id="loginEmail" placeholder="E-mail" class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+            <input type="password" id="loginSenha" placeholder="Senha" class="w-full mb-6 px-4 py-3 rounded-lg input-custom text-lg" />
+            <button id="entrarBtn" class="w-full btn-animado bg-gradient-to-r from-pink-400 to-purple-400 text-white font-bold py-3 rounded-lg shadow transition mb-3 text-lg">
+                Entrar
+            </button>
+            <button onclick="fecharLogin()" class="text-purple-700 hover:underline mt-2 text-base">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="modalCriarConta" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center modal-anim border-2 border-purple-200 relative">
+            <button onclick="fecharCriarConta()" class="absolute top-4 right-4 text-purple-400 hover:text-pink-400 text-2xl z-10">
+                <span class="material-icons">close</span>
+            </button>
+            <h2 class="text-3xl font-extrabold text-purple-800 mb-6 tracking-wide">Criar Conta</h2>
+            <input type="text" id="cadastroNome" placeholder="Nome completo" class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+            <input type="email" id="cadastroEmail" placeholder="E-mail" class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+            <input type="password" id="cadastroSenha" placeholder="Senha" class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+            <input type="password" id="cadastroConfirmarSenha" placeholder="Confirmar senha" class="w-full mb-6 px-4 py-3 rounded-lg input-custom text-lg" />
+            <button id="criarContaBtn" class="w-full btn-animado bg-gradient-to-r from-purple-400 to-pink-400 text-white font-bold py-3 rounded-lg shadow transition mb-3 text-lg">
+                Criar conta
+            </button>
+            <button onclick="fecharCriarConta()" class="text-purple-700 hover:underline mt-2 text-base">Cancelar</button>
+        </div>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+</html>
