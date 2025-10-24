@@ -72,15 +72,18 @@ function activateSidebarLink(target) {
 function stripMarkdown(text) {
     if (!text) return '';
     // Remove ```json, ```, **, *, #, >, etc.
-    let cleaned = text.replace(/```(json)?\s*/g, '').replace(/```\s*$/g, '');
+    let cleaned = text.replace(/```(json)?\s*/g, '').replace(/\s*```$/, '');
     cleaned = cleaned.replace(/(\*\*|__)(.*?)\1/g, '$2'); // Negrito
     cleaned = cleaned.replace(/(\*|_)(.*?)\1/g, '$2');   // Itálico
     cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');      // Títulos
     cleaned = cleaned.replace(/^>\s+/gm, '');           // Citação
     cleaned = cleaned.replace(/^[-*+]\s+/gm, '');       // Listas
     cleaned = cleaned.replace(/`([^`]+)`/g, '$1');      // Código inline
+    // Remover quebras de linha extras no início/fim e espaços em branco
+    cleaned = cleaned.split('\n').map(line => line.trim()).filter(line => line.length > 0).join('\n');
     return cleaned.trim();
 }
+
 
 // ---> FUNÇÕES DO CHAT MOVIDAS PARA FORA DO DOMContentLoaded <---
 
@@ -123,15 +126,16 @@ function addMessage(sender, text) {
 function showTypingIndicator(show) {
     const typingIndicator = document.getElementById('typing-indicator'); // Obtém aqui
     const chatMessages = document.getElementById('chat-messages'); // Obtém aqui também
-    if (!typingIndicator) return;
-    typingIndicator.style.display = show ? 'flex' : 'none'; // Usa flex para alinhar pontos
+    if (!typingIndicator || !chatMessages) return; // Verifica se ambos existem
+    typingIndicator.classList.toggle('hidden', !show); // Usa a classe hidden do Tailwind
     if (show) {
          // Garante que o indicador seja visível
         setTimeout(() => {
-            if(chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+             chatMessages.scrollTop = chatMessages.scrollHeight;
         }, 50);
     }
 }
+
 
 function connectToChat() {
      if (!currentUser.id) {
@@ -216,7 +220,8 @@ function sendMessage() {
     socket.emit('enviar_mensagem', { mensagem: messageText });
 
     chatInput.value = '';
-    chatInput.style.height = 'auto';
+    chatInput.style.height = 'auto'; // Reseta altura
+    chatInput.rows = 1; // Reseta linhas se você estiver usando rows
     chatInput.focus();
     showTypingIndicator(true); // Chama a função global
 }
@@ -242,6 +247,8 @@ function checkLoginStatus() {
     };
 
     if (currentUser.plano !== 'premium') {
+        // Se por algum motivo um usuário não-premium chegou aqui, redireciona
+        console.warn("Usuário não premium acessou página premium. Redirecionando...");
         window.location.href = 'freemium.html';
         return;
     }
@@ -307,7 +314,14 @@ function showTela(page) {
         updateProfileDisplay();
     }
     if (page === 'chat') {
-        setTimeout(connectToChat, 50); // Chama a função global
+        // Conecta ao chat com um pequeno delay para garantir que a UI está visível
+        setTimeout(connectToChat, 100);
+    } else {
+        // Desconecta do chat se sair da tela de chat para economizar recursos
+        if (socket && socket.connected) {
+             console.log("Saindo da tela de chat, desconectando socket.");
+            socket.disconnect();
+        }
     }
 }
 
@@ -345,6 +359,12 @@ document.addEventListener('DOMContentLoaded', () => {
             activateMenuLink(null); // Desativa menu da topbar
             showTela(this.getAttribute('data-sidebar'));
         });
+    });
+
+    // Ajustar underline ao redimensionar
+     window.addEventListener('resize', () => {
+        const active = document.querySelector('#menuBar .menu-link.active');
+        if (active) moveMenuUnderline(active);
     });
 
     // --- Lógica de Edição de Perfil ---
@@ -410,7 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Lógica das Ferramentas Premium (IA) ---
-    // (Listeners para Resumo, Correção, Flashcards, Quiz como na correção anterior) ...
+
      // Gerar Resumo
     const btnResumo = document.getElementById('gerarResumoBtn');
     if (btnResumo) btnResumo.addEventListener('click', async () => {
@@ -429,10 +449,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 throw new Error(data.error || data.erro || `Erro ${response.status}`);
             }
+            // MODIFICADO: Acessar data.conteudo
             if (data.conteudo) {
                  document.getElementById('resumoTitulo').textContent = `Resumo sobre: ${stripMarkdown(data.assunto || tema)}`;
                  document.getElementById('resumoConteudo').innerHTML = stripMarkdown(data.conteudo).replace(/\n/g, '<br>');
                  document.getElementById('resumoOutput').classList.remove('hidden');
+            } else if (data.erro) { // Verifica se a API retornou um erro específico
+                throw new Error(data.erro);
             } else {
                  throw new Error("Resposta da API de resumo está incompleta.");
             }
@@ -467,9 +490,12 @@ document.addEventListener('DOMContentLoaded', () => {
              if (!response.ok) {
                 throw new Error(data.error || data.erro || `Erro ${response.status}`);
             }
+            // MODIFICADO: Acessar data.correcao
             if (data.correcao) {
                 document.getElementById('correcaoConteudo').innerHTML = stripMarkdown(data.correcao).replace(/\n/g, '<br>');
                 document.getElementById('correcaoOutput').classList.remove('hidden');
+            } else if (data.erro) { // Verifica erro específico
+                 throw new Error(data.erro);
             } else {
                  throw new Error("Resposta da API de correção está incompleta.");
             }
@@ -493,7 +519,8 @@ document.addEventListener('DOMContentLoaded', () => {
         btnFlash.disabled = true;
         btnFlash.textContent = "Gerando...";
         const container = document.getElementById('flashcardsContainer');
-        container.innerHTML = '';
+        container.innerHTML = ''; // Limpa flashcards antigos
+
         try {
             const response = await fetch(`${API_BASE_URL}/premium/flashcard`, {
                 method: 'POST',
@@ -501,33 +528,68 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(payload),
                  credentials: 'include'
             });
-             const data = await response.json();
+             const data = await response.json(); // Espera um objeto { assunto: ..., contedo: "..."}
+
             if (!response.ok) {
-                throw new Error(data.error || data.erro || `Erro ${response.status}`);
+                 // Se o backend retornou um erro específico no JSON
+                 if (data && (data.error || data.erro)) {
+                    throw new Error(data.error || data.erro);
+                 }
+                throw new Error(`Erro HTTP ${response.status}`);
             }
-             if (!Array.isArray(data)) {
-                  if (typeof data === 'object' && data.error) { throw new Error(data.error); }
-                 console.error("Resposta inesperada da API (flashcard), não é um array:", data);
-                 throw new Error("A IA retornou um formato inválido para flashcards.");
+
+            // ***** INÍCIO DA CORREÇÃO *****
+            if (!data.contedo || typeof data.contedo !== 'string') {
+                 console.error("Resposta inesperada da API (flashcard), campo 'contedo' ausente ou inválido:", data);
+                 throw new Error("A IA retornou um formato inválido para flashcards (contedo ausente/inválido).");
              }
-             if (data.length === 0) { alert("Nenhum flashcard gerado para este tema."); }
-            data.forEach(fc => {
-                 if (fc.pergunta && fc.resposta) {
-                    const div = document.createElement('div');
-                    div.className = 'flashcard w-full sm:w-80 h-48';
-                    div.onclick = () => div.classList.toggle('flipped');
-                    div.innerHTML = `
-                        <div class="flashcard-inner">
-                            <div class="flashcard-front"><span class="font-semibold">${stripMarkdown(fc.pergunta)}</span></div>
-                            <div class="flashcard-back">
-                                <div class="flex flex-col items-center text-center p-4">
-                                    <span class="font-bold text-pink-600">${stripMarkdown(fc.resposta)}</span>
-                                    </div>
-                            </div>
-                        </div>`;
-                    container.appendChild(div);
-                 } else { console.warn("Flashcard inválido recebido:", fc); }
+
+            const flashcardText = data.contedo.trim();
+             // Tenta tratar casos onde a IA pode retornar a mensagem de erro direto no contedo
+            if (flashcardText.includes("NÃO É POSSIVEL FORMAR UMA RESPOSTA")) {
+                 throw new Error("Não é possível gerar flashcards para este tema devido à inadequação do assunto.");
+            }
+
+             // Divide o texto em blocos "Pergunta: ... Resposta: ..."
+            const flashcardBlocks = flashcardText.split(/Pergunta:/i).filter(block => block.trim() !== '');
+
+            if (flashcardBlocks.length === 0) {
+                 alert("Nenhum flashcard gerado para este tema ou formato de resposta inesperado.");
+                 console.warn("Conteúdo recebido não continha 'Pergunta:':", flashcardText);
+            }
+
+            flashcardBlocks.forEach((block, index) => {
+                 const parts = block.split(/Resposta:/i);
+                 if (parts.length >= 2) {
+                    const pergunta = stripMarkdown(parts[0].trim());
+                    const resposta = stripMarkdown(parts[1].trim());
+
+                    if (pergunta && resposta) { // Garante que ambos foram extraídos
+                        const div = document.createElement('div');
+                        // Ajustando classes para consistência e responsividade
+                        div.className = 'flashcard w-full sm:w-64 md:w-72 lg:w-80 h-48 bg-white rounded-xl shadow-lg cursor-pointer perspective';
+                        div.onclick = () => div.classList.toggle('flipped');
+                        div.innerHTML = `
+                            <div class="flashcard-inner">
+                                <div class="flashcard-front">
+                                    <span class="text-purple-800 text-lg font-semibold text-center">${pergunta}</span>
+                                </div>
+                                <div class="flashcard-back">
+                                    <div class="flex flex-col items-center justify-center text-center p-4">
+                                        <span class="font-bold text-pink-600">${resposta}</span>
+                                        </div>
+                                </div>
+                            </div>`;
+                        container.appendChild(div);
+                    } else {
+                         console.warn(`Flashcard ${index + 1} inválido (pergunta ou resposta vazia após parse):`, block);
+                    }
+                 } else {
+                    console.warn(`Bloco ${index + 1} não continha 'Resposta:':`, block);
+                 }
             });
+             // ***** FIM DA CORREÇÃO *****
+
         } catch (error) {
             console.error('Erro API de flashcards:', error);
             alert(`Erro ao gerar flashcards: ${error.message}.`);
@@ -549,7 +611,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const popup = document.getElementById("quizPopup");
         output.innerHTML = "";
         output.classList.add("hidden");
-        popup.classList.remove("show");
+        popup.classList.remove("show"); // Esconde popup de resultados anteriores
+
         try {
             const response = await fetch(`${API_BASE_URL}/premium/quiz`, {
                 method: "POST",
@@ -557,72 +620,137 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(payload),
                  credentials: 'include'
             });
-            const data = await response.json();
+            const data = await response.json(); // Espera um objeto { assunto: ..., contedo: "..."}
+
             if (!response.ok) {
-                 if (data && data.error) { throw new Error(data.error); }
-                 throw new Error(data.error || data.erro || `Erro HTTP ${response.status}`);
+                 // Se o backend retornou um erro específico no JSON
+                 if (data && (data.error || data.erro)) {
+                     throw new Error(data.error || data.erro);
+                 }
+                throw new Error(`Erro HTTP ${response.status}`);
             }
-             if (!Array.isArray(data)) {
-                 console.error("Resposta inesperada da API (quiz), não é um array:", data);
-                 throw new Error("A IA retornou um formato inválido para o quiz.");
+
+            // ***** INÍCIO DA CORREÇÃO *****
+             if (!data.contedo || typeof data.contedo !== 'string') {
+                 console.error("Resposta inesperada da API (quiz), campo 'contedo' ausente ou inválido:", data);
+                 throw new Error("A IA retornou um formato inválido para o quiz (contedo ausente/inválido).");
              }
-             if (data.length === 0) { alert("Nenhum quiz gerado para este tema."); return; }
-            const quizJson = data;
-            let totalQuestoes = 0;
+
+             const quizText = data.contedo.trim();
+              // Tenta tratar casos onde a IA pode retornar a mensagem de erro direto no contedo
+             if (quizText.includes("NÃO É POSSIVEL FORMAR UMA RESPOSTA")) {
+                  throw new Error("Não é possível gerar um quiz para este tema devido à inadequação do assunto.");
+             }
+
+             let quizJson = [];
+             try {
+                 // Limpa possível formatação Markdown antes de parsear
+                 let textoLimpo = quizText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '').trim();
+                 // Tenta corrigir aspas inválidas comuns
+                 textoLimpo = textoLimpo.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+                 
+                 const parsedData = JSON.parse(textoLimpo);
+
+                 // Verifica se o JSON está aninhado (como visto no erro: { "quiz": [...] })
+                 if (Array.isArray(parsedData)) {
+                     quizJson = parsedData;
+                 } else if (parsedData.quiz && Array.isArray(parsedData.quiz)) {
+                      console.warn("Quiz estava aninhado dentro de uma chave 'quiz'. Ajustando.");
+                     quizJson = parsedData.quiz; // Ajusta para usar o array aninhado
+                 } else {
+                     throw new Error("O JSON retornado não é um array de questões ou um objeto com a chave 'quiz' contendo um array.");
+                 }
+
+             } catch (e) {
+                 console.error("Erro ao parsear JSON do quiz:", e);
+                 console.error("Texto recebido da IA:", quizText); // Loga o texto problemático
+                 throw new Error(`Erro ao interpretar o JSON retornado pela IA: ${e.message}`);
+             }
+            // ***** FIM DA CORREÇÃO *****
+
+
+             if (quizJson.length === 0) { alert("Nenhum quiz gerado para este tema ou formato inválido."); return; }
+
+            // Lógica para exibir o quiz (mantida como estava, mas usando quizJson)
+            let totalQuestoesValidas = 0; // Contar apenas questões válidas
             let respostasCorretas = 0;
             let respondidas = 0;
             const scoreDisplay = document.getElementById("quizScore");
+
             quizJson.forEach((questao, index) => {
-                 if (!questao.pergunta || !questao.opcoes || !Array.isArray(questao.opcoes) || questao.opcoes.length < 2 || !questao.resposta_correta) {
-                     console.warn(`Questão ${index + 1} inválida:`, questao); return;
+                 // Validação mais robusta da estrutura da questão
+                 if (!questao || typeof questao !== 'object' || !questao.pergunta || !questao.opcoes || !Array.isArray(questao.opcoes) || questao.opcoes.length < 2 || !questao.resposta_correta) {
+                     console.warn(`Questão ${index + 1} inválida ou incompleta:`, questao); return; // Pula questão inválida
                  }
-                 totalQuestoes++;
+                 totalQuestoesValidas++; // Incrementa só se a questão for válida
+
                 const card = document.createElement("div");
                 card.className = "mb-6 p-4 bg-white rounded-lg shadow w-full card";
-                card.innerHTML = `<p class="quiz-question-number">Pergunta ${totalQuestoes}</p><p class="font-semibold text-lg mb-3">${stripMarkdown(questao.pergunta)}</p>`;
+                // Usar totalQuestoesValidas para a numeração
+                card.innerHTML = `<p class="quiz-question-number">Pergunta ${totalQuestoesValidas}</p><p class="font-semibold text-lg mb-3">${stripMarkdown(questao.pergunta)}</p>`;
+
                 const opcoesContainer = document.createElement("div");
                 opcoesContainer.className = "space-y-2";
+                // Garante que a resposta correta seja comparada sem markdown
                 const respostaCorretaTexto = stripMarkdown(questao.resposta_correta);
+
                 questao.opcoes.forEach((opcaoTextoOriginal) => {
-                     const opcaoTextoLimpo = stripMarkdown(opcaoTextoOriginal);
+                     const opcaoTextoLimpo = stripMarkdown(opcaoTextoOriginal); // Limpa markdown da opção também
                     const opcaoBtn = document.createElement("button");
                     opcaoBtn.className = "quiz-option w-full text-left p-3 border rounded-lg hover:bg-gray-100 transition";
                     opcaoBtn.textContent = opcaoTextoLimpo;
+
                     opcaoBtn.addEventListener("click", () => {
                         if (card.classList.contains("card-respondida")) return;
                         card.classList.add("card-respondida");
                         respondidas++;
+
+                        // Compara textos limpos
                         if (opcaoBtn.textContent === respostaCorretaTexto) {
                             respostasCorretas++;
                             opcaoBtn.classList.add("correct-answer");
                         } else {
                             opcaoBtn.classList.add("wrong-answer");
+                            // Encontra o botão correto comparando textos limpos
                             const corretaBtn = Array.from(opcoesContainer.children).find(btn => btn.textContent === respostaCorretaTexto);
                             if(corretaBtn) corretaBtn.classList.add("correct-answer");
                         }
-                        opcoesContainer.querySelectorAll("button").forEach(b => b.disabled = true);
+                        opcoesContainer.querySelectorAll("button").forEach(b => b.disabled = true); // Desabilita todos os botões da questão
+
+                        // Mostra explicação se houver
                         const explanationDiv = card.querySelector('.quiz-explanation');
                         if (explanationDiv) explanationDiv.classList.remove('hidden');
-                        if (respondidas === totalQuestoes) {
-                             scoreDisplay.textContent = `Você acertou ${respostasCorretas} de ${totalQuestoes} perguntas!`;
+
+                        // Verifica se todas as questões VÁLIDAS foram respondidas
+                        if (respondidas === totalQuestoesValidas) {
+                             scoreDisplay.textContent = `Você acertou ${respostasCorretas} de ${totalQuestoesValidas} perguntas!`;
                             popup.classList.add("show");
                         }
                     });
                     opcoesContainer.appendChild(opcaoBtn);
                 });
+
                 card.appendChild(opcoesContainer);
+
+                // Adiciona explicação (se existir), mas começa escondida
                 if(questao.explicacao){
                     const explanationDiv = document.createElement('div');
-                    explanationDiv.className = 'quiz-explanation hidden';
+                    explanationDiv.className = 'quiz-explanation hidden mt-4'; // Adiciona margin top
                     explanationDiv.innerHTML = `<strong>Explicação:</strong> ${stripMarkdown(questao.explicacao)}`;
                     card.appendChild(explanationDiv);
                 }
                 output.appendChild(card);
-            });
-            output.classList.remove("hidden");
-             if (totalQuestoes === 0 && quizJson.length > 0) {
-                 alert("O quiz foi gerado, mas nenhuma questão estava no formato esperado.");
+            }); // Fim do forEach quizJson
+
+            output.classList.remove("hidden"); // Mostra a área do quiz
+
+             // Alerta se o quiz foi gerado mas nenhuma questão era válida
+             if (totalQuestoesValidas === 0 && quizJson.length > 0) {
+                 alert("O quiz foi gerado pela IA, mas nenhuma questão estava no formato esperado após a análise.");
+             } else if (totalQuestoesValidas === 0) {
+                  alert("Não foi possível gerar questões válidas para este tema.");
              }
+
         } catch (error) {
             console.error("Erro ao gerar/processar quiz:", error);
             alert("Erro ao gerar quiz: " + error.message);
@@ -632,14 +760,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+
     // Botão de reiniciar o quiz no popup
     const restartBtn = document.getElementById("restartQuizBtn");
     if(restartBtn) restartBtn.addEventListener("click", () => {
          const output = document.getElementById("quizOutput");
          const popup = document.getElementById("quizPopup");
-        output.innerHTML = "";
-        output.classList.add("hidden");
-        popup.classList.remove("show");
+        output.innerHTML = ""; // Limpa as questões
+        output.classList.add("hidden"); // Esconde a área do quiz
+        popup.classList.remove("show"); // Esconde o popup de resultado
+        // Opcional: Limpar o input do tema
+        // document.getElementById('quizInput').value = '';
     });
 
     // --- LÓGICA DO CHATBOT ---
@@ -651,14 +782,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
      if (chatInput) chatInput.addEventListener('keypress', (event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
+            event.preventDefault(); // Impede a quebra de linha padrão do Enter no textarea
             sendMessage(); // Chama a função global
         }
     });
 
-    if (chatInput) chatInput.addEventListener('input', () => {
-        chatInput.style.height = 'auto';
+    // Ajuste de altura do textarea do chat
+     if (chatInput) chatInput.addEventListener('input', () => {
+        chatInput.style.height = 'auto'; // Reseta a altura para calcular corretamente
+        // Define a altura baseada no scrollHeight, limitado a um máximo (e.g., 120px)
         chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
     });
+
 
 }); // Fim do DOMContentLoaded
