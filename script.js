@@ -265,34 +265,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // Lógica para os botões de Login e Criar Conta (Modal)
-    document.getElementById('entrarBtn').addEventListener('click', async () => {
-        const email = document.getElementById('loginEmail').value;
-        const senha = document.getElementById('loginSenha').value;
+   // Inside script.js and static/script.js
+document.getElementById('entrarBtn').addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value;
+    const senha = document.getElementById('loginSenha').value;
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, senha }),
-            });
-            const data = await response.json();
-            if (response.ok) {
-                alert(data.message);
-                // AQUI ESTÁ A CORREÇÃO PRINCIPAL: ACESSAR data.user
-                sessionStorage.setItem('currentUser', JSON.stringify(data.user));
-                loadUserFromSession(); // Carrega o novo usuário e atualiza a UI
-                fecharLogin();
-                showTela('inicio');
-            } else {
-                alert(data.error || 'Erro ao fazer login. Verifique suas credenciais.');
-            }
-        } catch (error) {
-            console.error('Erro ao conectar com a API de login:', error);
-            alert('Erro ao conectar com o servidor');
+    try {
+        // CORRECT URL
+        const response = await fetch(`${API_BASE_URL}/auth/login`, { // <--- CORRECTED HERE
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, senha }),
+             // Consider adding credentials: 'include' if you rely on sessions/cookies here too
+             // like you did in login.js
+        });
+        const data = await response.json();
+        if (response.ok) {
+            alert(data.message);
+            // You'll need to adapt the login success logic here similar to login.js
+            // Store user data in sessionStorage and potentially redirect or update UI
+            sessionStorage.setItem('currentUser', JSON.stringify(data.user)); // Store user data
+            // loadUserFromSession(); // Assuming you have a function like this to update UI
+            fecharLogin();
+            // Decide where to go/what to do after login from index.html
+            // Example: Reload or redirect based on plan
+             if (data.user.plano === 'premium') {
+                 window.location.href = 'premium.html';
+             } else {
+                 window.location.href = 'freemium.html';
+             }
+
+        } else {
+            alert(data.error || 'Erro ao fazer login. Verifique suas credenciais.');
         }
-    });
+    } catch (error) {
+        console.error('Erro ao conectar com a API de login:', error);
+        alert('Erro ao conectar com o servidor'); //
+    }
+});
 
     document.getElementById('criarContaBtn').addEventListener('click', async () => {
         const nome = document.getElementById('cadastroNome').value;
