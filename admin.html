@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - RePensei</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css"> <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body class="bg-purple-50">
+
+    <nav class="w-64 h-screen bg-purple-800 text-white flex flex-col shadow-lg fixed top-0 left-0 z-50">
+        <div class="flex items-center gap-2 justify-center py-6 border-b border-purple-700">
+            <span class="material-icons text-3xl">admin_panel_settings</span>
+            <span class="text-2xl font-bold">RePensei Admin</span>
+        </div>
+        <ul class="flex flex-col gap-2 p-4">
+            <li>
+                <a href="#dashboard" class="admin-menu-link flex items-center gap-3 px-4 py-3 rounded-lg font-semibold bg-purple-900 transition">
+                    <span class="material-icons">dashboard</span>
+                    Dashboard
+                </a>
+            </li>
+            <li>
+                <a href="#alunos" class="admin-menu-link flex items-center gap-3 px-4 py-3 rounded-lg font-semibold hover:bg-purple-700 transition">
+                    <span class="material-icons">group</span>
+                    Gerenciar Alunos
+                </a>
+            </li>
+        </ul>
+        <div class="mt-auto p-4 border-t border-purple-700">
+            <div class="mb-2">
+                <span class="text-sm">Logado como:</span>
+                <span id="adminName" class="font-bold">Admin (Teste)</span>
+            </div>
+            <button id="adminLogoutBtn" class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition shadow">
+                <span class="material-icons">logout</span>
+                Sair
+            </button>
+        </div>
+    </nav>
+
+    <main class="flex-1 h-screen overflow-y-auto p-8 ml-64">
+        
+        <section id="tela-dashboard" class="admin-tela">
+            <h1 class="text-4xl font-bold text-purple-800 mb-8">Dashboard</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg flex items-center gap-4">
+                    <div class="p-3 rounded-full bg-purple-100 text-purple-600"><span class="material-icons text-3xl">group</span></div>
+                    <div>
+                        <h3 class="text-gray-500 text-sm font-semibold">Total de Alunos</h3>
+                        <p id="statTotalAlunos" class="text-3xl font-bold text-gray-800">0</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg flex items-center gap-4">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600"><span class="material-icons text-3xl">task_alt</span></div>
+                    <div>
+                        <h3 class="text-gray-500 text-sm font-semibold">Média Geral de Acertos</h3>
+                        <p id="statMediaAcertos" class="text-3xl font-bold text-gray-800">0%</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Alunos por Plano</h3>
+                    <div class="w-full max-w-sm mx-auto">
+                        <canvas id="chartAlunosPlano"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Quizzes Realizados (Últimos 7 dias)</h3>
+                    <canvas id="chartQuizzesDia"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="tela-alunos" class="admin-tela hidden">
+            <h1 class="text-4xl font-bold text-purple-800 mb-8">Gerenciar Alunos</h1>
+            <button id="btnNovoAluno" class="btn-primary mb-6">
+                <span class="material-icons align-middle text-lg">add</span> Novo Aluno
+            </button>
+
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-4 text-left text-sm font-semibold text-gray-600">Nome</th>
+                            <th class="p-4 text-left text-sm font-semibold text-gray-600">Email</th>
+                            <th class="p-4 text-left text-sm font-semibold text-gray-600">Plano</th>
+                            <th class="p-4 text-left text-sm font-semibold text-gray-600">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaAlunosBody">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="modalAluno" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl modal-anim relative">
+            <button id="fecharModalAluno" class="absolute top-4 right-4 text-purple-400 hover:text-pink-400 text-2xl z-10">
+                <span class="material-icons">close</span>
+            </button>
+            <h2 id="modalAlunoTitulo" class="text-3xl font-extrabold text-purple-800 mb-6 tracking-wide">Novo Aluno</h2>
+            
+            <input type="hidden" id="alunoId" value="">
+            
+            <label for="alunoNome" class="w-full text-left text-gray-700 font-medium mb-1">Nome:</label>
+            <input type="text" id="alunoNome" placeholder="Nome completo" class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+            
+            <label for="alunoEmail" class="w-full text-left text-gray-700 font-medium mb-1">E-mail:</label>
+            <input type="email" id="alunoEmail" placeholder="E-mail" class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+            
+            <label for="alunoPlano" class="w-full text-left text-gray-700 font-medium mb-1">Plano:</label>
+            <select id="alunoPlano" class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg bg-white">
+                <option value="freemium">Freemium</option>
+                <option value="premium">Premium</option>
+            </select>
+
+            <label for="alunoSenha" class="w-full text-left text-gray-700 font-medium mb-1">Senha:</label>
+            <input type="password" id="alunoSenha" placeholder="Deixe em branco para não alterar" class="w-full mb-6 px-4 py-3 rounded-lg input-custom text-lg" />
+            
+            <button id="salvarAlunoBtn" class="w-full btn-primary text-lg">
+                Salvar
+            </button>
+        </div>
+    </div>
+    
+    <div id="modalResultados" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+        <div class="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl modal-anim relative">
+            <button id="fecharModalResultados" class="absolute top-4 right-4 text-purple-400 hover:text-pink-400 text-2xl z-10">
+                <span class="material-icons">close</span>
+            </button>
+            <h2 id="modalResultadosTitulo" class="text-3xl font-extrabold text-purple-800 mb-6 tracking-wide">Resultados</h2>
+            
+            <div id="listaResultadosContainer" class="max-h-96 overflow-y-auto pr-2">
+                </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

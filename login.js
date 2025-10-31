@@ -26,6 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'freemium.html';
         }
     }
+    // Redireciona se for um admin já logado
+    if (sessionStorage.getItem('currentAdmin')) {
+        // =====> ALTERAÇÃO AQUI <=====
+        window.location.href = 'admin.html'; // Corrigido o caminho
+        // ============================
+    }
+
 
     // Lógica do Botão de Login
     document.getElementById('entrarBtn').addEventListener('click', async () => {
@@ -37,22 +44,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Chama a nova rota /auth/login
+            // Chama a rota /auth/login (que agora é unificada)
             const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ email, senha }),
-                // ---> ADIÇÃO ESSENCIAL AQUI <---
                 credentials: 'include' 
-                // ---> FIM DA ADIÇÃO <---
             });
             
-            // Verifica se a resposta foi realmente OK (status 200-299)
-            // antes de tentar parsear o JSON
             if (!response.ok) {
-                // Tenta ler a mensagem de erro do backend se houver
                 let errorData = { error: `Erro HTTP: ${response.status} ${response.statusText}` };
                 try {
                     errorData = await response.json();
@@ -64,24 +66,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json(); // Agora seguro para parsear
 
-            // Armazena os dados do usuário na sessionStorage
-            sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+            // --- INÍCIO DA LÓGICA DE REDIRECIONAMENTO ---
+            
+            if (data.role === 'admin') {
+                // É um admin!
+                sessionStorage.setItem('currentAdmin', JSON.stringify(data.user));
+                // =====> ALTERAÇÃO AQUI <=====
+                window.location.href = 'admin.html'; // Redireciona para o dashboard admin
+                // ============================
 
-            // Redireciona com base no plano recebido
-            if (data.user.plano === 'premium') {
-                window.location.href = 'premium.html';
+            } else if (data.role === 'aluno') {
+                // É um aluno!
+                sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+                
+                // Redireciona com base no plano do aluno
+                if (data.user.plano === 'premium') {
+                    window.location.href = 'premium.html';
+                } else {
+                    window.location.href = 'freemium.html';
+                }
             } else {
-                window.location.href = 'freemium.html';
+                // Fallback, caso o backend envie uma 'role' desconhecida
+                throw new Error("Tipo de usuário ('role') desconhecido recebido do servidor.");
             }
+            // --- FIM DA LÓGICA DE REDIRECIONAMENTO ---
 
         } catch (error) {
             console.error('Erro ao conectar com a API de login:', error);
             // Mostra a mensagem de erro específica capturada
-            alert(`Erro ao conectar com o servidor: ${error.message}. Verifique o console para detalhes.`);
+            alert(`Erro ao fazer login: ${error.message}.`);
         }
     });
 
-    // Lógica do Botão de Criar Conta
+    // Lógica do Botão de Criar Conta (Não muda, pois só cria Alunos)
     document.getElementById('criarContaBtn').addEventListener('click', async () => {
         const nome = document.getElementById('cadastroNome').value;
         const email = document.getElementById('cadastroEmail').value;
@@ -99,12 +116,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Chama a nova rota /auth/cadastrar_usuario
+            // Chama a rota /auth/cadastrar_usuario (continua a mesma)
             const response = await fetch(`${API_BASE_URL}/auth/cadastrar_usuario`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nome, email, senha }),
-                 // ---> ADIÇÃO ESSENCIAL AQUI TAMBÉM (Boa prática) <---
                  credentials: 'include' 
             });
             

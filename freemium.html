@@ -73,10 +73,11 @@
                 <p class="text-white text-lg mt-6 mb-8 text-center drop-shadow font-medium">
                     Você está no plano Freemium. Aproveite nossos Flashcards e Quizzes selecionados para começar seus estudos!
                 </p>
-                <button onclick="window.location.href = 'premium.html'" class="btn-animado bg-gradient-to-r from-pink-400 to-yellow-400 text-white text-xl md:text-2xl font-bold px-8 md:px-10 py-3 rounded-2xl shadow-md transition relative">
+                
+                <button id="upgradeBtn" class="btn-animado bg-gradient-to-r from-pink-400 to-yellow-400 text-white text-xl md:text-2xl font-bold px-8 md:px-10 py-3 rounded-2xl shadow-md transition relative">
                     <span class="material-icons align-middle mr-1">star</span> Fazer Upgrade
                 </button>
-            </div>
+                </div>
         </div>
 
         <div id="tela-flashcards" class="tela w-full max-w-5xl">
@@ -112,6 +113,12 @@
                     Gerar Quiz
                 </button>
                 <div id="quizOutput" class="mt-6 w-full text-gray-700 text-left bg-purple-100 p-4 rounded-lg hidden"></div>
+                
+                <div id="quizResult" class="w-full text-center mt-6 p-6 bg-white rounded-2xl shadow-lg hidden">
+                    <h3 class="text-2xl font-bold text-purple-800 mb-2">Resultado do Quiz</h3>
+                    <p id="quizScore" class="text-lg text-gray-700 mb-4">Você acertou X de Y perguntas!</p>
+                    <button id="restartQuizBtn" class="btn-primary">Gerar Novamente</button>
+                </div>
             </div>
         </div>
 
@@ -155,14 +162,6 @@
             </div>
         </div>
         
-        <div id="quizPopup">
-            <div>
-                <h3>Resultado do Quiz</h3>
-                <p id="quizScore">Você acertou X de Y perguntas!</p>
-                <button id="restartQuizBtn" class="btn-primary">Recomeçar</button>
-            </div>
-        </div>
-
     </div>
     <script src="freemium.js"></script>
 </body>

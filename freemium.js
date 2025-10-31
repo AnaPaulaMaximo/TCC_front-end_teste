@@ -146,6 +146,87 @@ window.fecharEditarPerfil = function () {
     document.getElementById('modalEditarPerfil').classList.add('hidden');
 }
 
+
+// --- Função de Salvar Resultado do Quiz ---
+async function salvarResultadoQuiz(tema, acertos, totalPerguntas) {
+    if (!currentUser || !currentUser.id) {
+        console.warn("Não é possível salvar o resultado: usuário não logado.");
+        return;
+    }
+    
+    const payload = {
+        id_aluno: currentUser.id,
+        tema: tema, // O tema no freemium será a categoria
+        acertos: acertos,
+        total_perguntas: totalPerguntas
+    };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/quiz/salvar_resultado`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            console.log("Resultado do quiz salvo com sucesso!", data.message);
+        } else {
+            console.error("Falha ao salvar resultado do quiz:", data.error);
+        }
+    } catch (error) {
+        console.error("Erro de rede ao tentar salvar resultado do quiz:", error);
+    }
+}
+
+
+// =====> NOVA FUNÇÃO DE UPGRADE <=====
+async function handleUpgrade() {
+    if (!currentUser || !currentUser.id) {
+        return alert("Você precisa estar logado para fazer o upgrade.");
+    }
+
+    const updateData = {
+        plano: 'premium' // O dado que queremos atualizar
+    };
+
+    try {
+        // 1. Chamar a API para atualizar o plano no backend
+        const response = await fetch(`${API_BASE_URL}/auth/editar_usuario/${currentUser.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData),
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Não foi possível processar o upgrade.");
+        }
+
+        // 2. Atualizar o sessionStorage
+        // (Não vamos usar alert, como pedido)
+        console.log(data.message || "Upgrade realizado com sucesso!");
+        
+        currentUser.plano = 'premium'; // Atualiza o objeto local
+        
+        const sessionUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        sessionUser.plano = 'premium';
+        sessionStorage.setItem('currentUser', JSON.stringify(sessionUser));
+        
+        // 3. Redirecionar para a página premium
+        window.location.href = 'premium.html';
+
+    } catch (error) {
+        console.error('Erro ao fazer upgrade:', error);
+        alert(`Erro ao processar o upgrade: ${error.message}`);
+    }
+}
+// ==================================
+
+
 // --- Lógica Principal da Página ---
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -177,6 +258,19 @@ document.addEventListener('DOMContentLoaded', () => {
             showTela(this.getAttribute('data-sidebar'));
         });
     });
+    
+    // =====> ADICIONADO LISTENER PARA O BOTÃO DE UPGRADE <=====
+    const upgradeBtn = document.getElementById('upgradeBtn');
+    if (upgradeBtn) {
+        upgradeBtn.addEventListener('click', () => {
+            // 1. Confirmar com o usuário (sem usar alert, usando confirm)
+            if (confirm("Você confirma o upgrade para o plano Premium?")) {
+                handleUpgrade(); // Chama a função de upgrade
+            }
+        });
+    }
+    // ========================================================
+
 
     // --- Lógica de Edição de Perfil ---
     document.getElementById('btnEditarPerfil').addEventListener('click', abrirEditarPerfil);
@@ -205,6 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updateData),
+                 credentials: 'include' // Adicionado para consistência
             });
             const data = await response.json();
             if (response.ok) {
@@ -221,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sessionStorage.setItem('currentUser', JSON.stringify(sessionUser));
                 
                 updateProfileDisplay();
+                document.getElementById('topbarLogo').src = currentUser.fotoUrl; // Atualiza foto da topbar
                 fecharEditarPerfil();
             } else {
                 alert(data.error || 'Erro ao salvar alterações.');
@@ -253,7 +349,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_BASE_URL}/freemium/flashcard`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                 credentials: 'include' // Adicionado para consistência
             });
             
             const data = await response.json();
@@ -291,9 +388,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Lógica do Quiz (Freemium) ---
     document.getElementById("gerarQuizBtn").addEventListener("click", async () => {
+        const categoriaSelecionada = document.getElementById('quizCategory').value;
         const payload = {
             id_aluno: currentUser.id,
-            category: document.getElementById('quizCategory').value
+            category: categoriaSelecionada
         };
 
         const btn = document.getElementById("gerarQuizBtn");
@@ -301,10 +399,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.textContent = "Gerando...";
 
         const output = document.getElementById("quizOutput");
-        const popup = document.getElementById("quizPopup");
+        const resultDiv = document.getElementById("quizResult");
+        
         output.innerHTML = "";
         output.classList.add("hidden");
-        popup.classList.remove("show");
+        resultDiv.classList.add("hidden"); // Esconde resultados anteriores
 
         try {
             // Chama a rota /freemium/quiz
@@ -312,6 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
+                 credentials: 'include' // Adicionado para consistência
             });
             
             if (!response.ok) {
@@ -358,12 +458,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         opcoesContainer.querySelectorAll("button").forEach(b => b.disabled = true);
                         
+                        // Tenta encontrar e mostrar a explicação
                         const explanationDiv = card.querySelector('.quiz-explanation');
                         if (explanationDiv) explanationDiv.classList.remove('hidden');
                         
                         if (respondidas === totalQuestoes) {
                             scoreDisplay.textContent = `Você acertou ${respostasCorretas} de ${totalQuestoes} perguntas!`;
-                            popup.classList.add("show");
+                            resultDiv.classList.remove("hidden"); // Mostra o resultado
+                            
+                            // =====> CHAMA A FUNÇÃO DE SALVAR <=====
+                            // Usamos a categoria como "tema"
+                            let temaQuiz = categoriaSelecionada.charAt(0).toUpperCase() + categoriaSelecionada.slice(1);
+                            if (temaQuiz === 'Ambos') temaQuiz = 'Filosofia e Sociologia';
+                            salvarResultadoQuiz(temaQuiz, respostasCorretas, totalQuestoes);
+                            // ======================================
                         }
                     });
                     opcoesContainer.appendChild(opcaoBtn);
@@ -373,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if(questao.explicacao){
                     const explanationDiv = document.createElement('div');
-                    explanationDiv.className = 'quiz-explanation hidden';
+                    explanationDiv.className = 'quiz-explanation hidden'; // Começa escondido
                     explanationDiv.innerHTML = `<strong>Explicação:</strong> ${questao.explicacao}`;
                     card.appendChild(explanationDiv);
                 }
@@ -391,10 +499,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Botão de reiniciar o quiz no popup
+    // =====> LÓGICA DO BOTÃO RESTART ATUALIZADA <=====
     document.getElementById("restartQuizBtn").addEventListener("click", () => {
-        document.getElementById("quizOutput").innerHTML = "";
-        document.getElementById("quizOutput").classList.add("hidden");
-        document.getElementById("quizPopup").classList.remove("show");
+        const output = document.getElementById("quizOutput");
+        const resultDiv = document.getElementById("quizResult");
+
+        if(output) {
+            output.innerHTML = "";
+            output.classList.add("hidden");
+        }
+        if(resultDiv) {
+            resultDiv.classList.add("hidden");
+        }
+        
+        // Rola a tela de volta para o topo da tela-quiz
+         const telaQuiz = document.getElementById('tela-quiz');
+         if (telaQuiz) {
+             telaQuiz.scrollIntoView({ behavior: "smooth", block: "start" });
+         }
     });
 });
