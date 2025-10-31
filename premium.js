@@ -1,6 +1,6 @@
 // URL da sua API refatorada (porta 5002)
-const API_BASE_URL = 'http://127.0.0.1:5002';
-const SOCKET_URL = 'http://127.0.0.1:5002';
+const API_BASE_URL = 'http://127.0.0.1:5000';
+const SOCKET_URL = 'http://127.0.0.1:5000';
 let socket = null;
 
 // Objeto para guardar informações do usuário logado
