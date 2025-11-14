@@ -433,3 +433,30 @@
         transform: translateX(100%);
     }
 }
+
+
+/* ================== */
+/* Estilos para Upgrade.html (Flip do Cartão) */
+/* ================== */
+
+.perspective {
+    perspective: 1000px;
+}
+
+.transform-style-3d {
+    transform-style: preserve-3d;
+}
+
+.backface-hidden {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden; /* Para compatibilidade com Safari */
+}
+
+.transform-rotate-y-180 {
+    transform: rotateY(180deg);
+}
+
+/* Esta classe é a que o upgrade.js procura para girar */
+.card-display.flipped .card-inner {
+    transform: rotateY(180deg);
+}
