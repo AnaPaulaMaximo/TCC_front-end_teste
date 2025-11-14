@@ -258,18 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showTela(this.getAttribute('data-sidebar'));
         });
     });
-    
-    // =====> ADICIONADO LISTENER PARA O BOTÃO DE UPGRADE <=====
-    const upgradeBtn = document.getElementById('upgradeBtn');
-    if (upgradeBtn) {
-        upgradeBtn.addEventListener('click', () => {
-            // 1. Confirmar com o usuário (sem usar alert, usando confirm)
-            if (confirm("Você confirma o upgrade para o plano Premium?")) {
-                handleUpgrade(); // Chama a função de upgrade
-            }
-        });
-    }
-    // ========================================================
+  
 
 
     // --- Lógica de Edição de Perfil ---

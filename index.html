@@ -89,10 +89,13 @@
             </button>
         </div>
     </nav>
-    <button id="openSidebarBtn" onclick="toggleSidebar()"
-        class="fixed bottom-8 left-8 z-50 bg-[#4c1d95] text-white p-3 rounded-full shadow-lg text-2xl focus:outline-none hidden transition-all duration-300">
-        <span class="material-icons">menu</span>
-    </button>
+   <button id="openSidebarBtn" onclick="toggleSidebar()"
+    class="fixed bottom-8 left-8 z-50 bg-[#4c1d95] text-white p-3 rounded-full shadow-lg 
+           focus:outline-none hidden transition-all duration-300 grid place-items-center">
+    <span class="material-icons !leading-none !m-0 !p-0">menu</span>
+</button>
+
+
     <div id="mainContent"
         class="flex-1 ml-64 flex flex-col items-center justify-center w-full transition-all duration-400 mt-8 mb-8 px-4">
         <div id="tela-inicio" class="tela ativa fade-in">
@@ -117,16 +120,7 @@
                     Nosso foco é te preparar para os principais vestibulares do Brasil, como Fuvest, Unicamp e Enem.<br>
                     Mas se o seu objetivo é outro, não se preocupe, o RePensei também te ajuda nessa jornada!
                 </p>
-                <div class="w-full flex justify-center gap-6 mt-8">
-                    <button onclick="abrirLogin()"
-                        class="btn-animado bg-gradient-to-r from-pink-400 to-purple-400 text-white text-xl md:text-2xl font-bold px-8 md:px-10 py-3 rounded-2xl shadow-md transition relative">
-                        <span class="material-icons align-middle mr-1">login</span> Login
-                    </button>
-                    <button onclick="abrirCriarConta()"
-                        class="btn-animado bg-gradient-to-r from-purple-400 to-pink-400 text-white text-xl md:text-2xl font-bold px-8 md:px-10 py-3 rounded-2xl shadow-md transition relative">
-                        <span class="material-icons align-middle mr-1">person_add</span> Criar conta
-                    </button>
-                </div>
+                
             </div>
         </div>
 

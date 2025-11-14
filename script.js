@@ -221,31 +221,25 @@ function updateProfileDisplay() {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadUserFromSession();
+    
+    // --- LÓGICA DE REDIRECIONAMENTO IMEDIATO ---
+    
+    const storedUser = sessionStorage.getItem('currentUser');
 
-    document.getElementById('sidebar').classList.add('sidebar-visible');
-    document.getElementById('topbar').classList.add('topbar-visible');
-    document.getElementById('mainContent').classList.add('ml-64');
-
-    const initialSidebarLink = document.querySelector('#sidebar a[data-sidebar="inicio"]');
-    if (initialSidebarLink) {
-        activateSidebarLink(initialSidebarLink);
+    if (!storedUser) {
+        // 1. Se NÃO há usuário na sessão, redireciona imediatamente para login.html
+        window.location.href = 'login.html';
+    } else {
+        // 2. Se HÁ usuário, redireciona para a página correta (premium/freemium)
+        const userData = JSON.parse(storedUser);
+        if (userData.plano === 'premium') {
+            window.location.href = 'premium.html';
+        } else {
+            window.location.href = 'freemium.html';
+        }
     }
-    const initialMenuLink = document.querySelector('#menuBar .menu-link[data-page="inicio"]');
-    if (initialMenuLink) {
-        activateMenuLink(initialMenuLink);
-        showTela('inicio');
-    }
 
-    document.querySelectorAll('#menuBar .menu-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            activateMenuLink(link);
-            activateSidebarLink(null);
-            const page = link.getAttribute('data-page');
-            showTela(page);
-        });
-    });
+
 
     const sidebarLinks = document.querySelectorAll('#sidebar a[data-sidebar]');
     sidebarLinks.forEach(link => {
