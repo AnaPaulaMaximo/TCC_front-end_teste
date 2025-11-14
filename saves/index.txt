@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RePensei</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+
+<body id="mainBody"
+    class="pt-24 bg-gradient-to-br from-purple-800 via-purple-500 to-purple-300 min-h-screen flex fade-in">
+    <nav id="topbar" class="w-full topbar-gradient shadow z-50 fixed top-0 left-0 topbar-transition topbar-visible"
+        style="padding-left: 16rem;">
+        <div class="flex flex-row items-center justify-between gap-8 py-4 px-8">
+            <div class="flex items-center gap-2 absolute left-8 top-1/2 -translate-y-1/2">
+                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Logo"
+                    class="w-10 h-10 drop-shadow rounded-full border-2 border-white">
+                <span class="text-3xl font-extrabold text-white drop-shadow tracking-wide">RePensei</span>
+            </div>
+            <div class="flex flex-row items-center justify-center gap-8 mx-auto relative" id="menuBar">
+
+
+                <a href="#" class="menu-link font-semibold text-white hover:text-pink-300 transition"
+                    data-page="resumo">
+                    Resumo
+                </a>
+                <a href="#" class="menu-link font-semibold text-white hover:text-pink-300 transition"
+                    data-page="correcao">
+                    Correção
+                </a>
+                <a href="#" class="menu-link font-semibold text-white hover:text-pink-300 transition"
+                    data-page="flashcards">
+                    Flashcards
+                </a>
+                <a href="#" class="menu-link font-semibold text-white hover:text-pink-300 transition" data-page="quiz">
+                    Quiz
+                </a>
+                <span id="menuUnderline" class="menu-underline"></span>
+            </div>
+            <div></div>
+        </div>
+        <div class="w-11/12 mx-auto h-0.5 bg-white opacity-20"></div>
+    </nav>
+
+    <nav id="sidebar"
+        class="h-screen w-64 sidebar-gradient bg-opacity-80 sidebar-shadow flex flex-col justify-between fixed top-0 left-0 z-40 pt-24 sidebar-transition sidebar-visible">
+        <div>
+            <ul class="flex flex-col gap-2 px-4">
+                <li>
+                    <a href="#" data-sidebar="inicio"
+                        class="flex items-center gap-3 px-4 py-3 rounded-lg text-white font-semibold hover:bg-[#6d28d9] transition">
+                        <span class="material-icons">home</span>
+                        Início
+                    </a>
+                </li>
+                <!-- <li>
+                    <a href="#" data-sidebar="historico"
+                        class="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-[#6d28d9] transition">
+                        <span class="material-icons">history</span>
+                        Histórico
+                    </a>
+                </li> -->
+                <li>
+                    <!-- <a href="#" data-sidebar="perfil"
+                        class="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-[#6d28d9] transition">
+                        <span class="material-icons">person</span>
+                        Perfil
+                    </a> -->
+                </li>
+            </ul>
+        </div>
+        <div class="px-6 py-6">
+            <!-- <button id="authBtn"
+                class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition shadow">
+                <span class="material-icons" id="authIcon">logout</span>
+                <span id="authText">Sair</span>
+            </button> -->
+            <button id="hideSidebarBtn" onclick="toggleSidebar()"
+                class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#4c1d95] text-white hover:bg-[#6d28d9] transition shadow mt-2">
+                <span class="material-icons">chevron_left</span>
+                Esconder menu
+            </button>
+        </div>
+    </nav>
+    <button id="openSidebarBtn" onclick="toggleSidebar()"
+        class="fixed bottom-8 left-8 z-50 bg-[#4c1d95] text-white p-3 rounded-full shadow-lg text-2xl focus:outline-none hidden transition-all duration-300">
+        <span class="material-icons">menu</span>
+    </button>
+    <div id="mainContent"
+        class="flex-1 ml-64 flex flex-col items-center justify-center w-full transition-all duration-400 mt-8 mb-8 px-4">
+        <div id="tela-inicio" class="tela ativa fade-in">
+            <div
+                class="w-full max-w-2xl mx-auto p-10 rounded-3xl flex flex-col items-center glass shadow-2xl border-2 border-purple-200">
+                <div class="flex items-center gap-4 mb-6">
+                    <svg width="56" height="56" viewBox="0 0 48 48" fill="none">
+                        <circle cx="24" cy="24" r="24" fill="#fff" fill-opacity="0.15" />
+                        <path d="M24 10L36 18V38H12V18L24 10Z" stroke="#fff" stroke-width="2" fill="#fff"
+                            fill-opacity="0.2" />
+                        <rect x="20" y="26" width="8" height="8" rx="2" fill="#fff" fill-opacity="0.7" />
+                    </svg>
+                    <h1 class="text-5xl font-extrabold text-white drop-shadow tracking-wide">Bem-vindo ao <span
+                            class="text-pink-300">RePensei</span></h1>
+                </div>
+                <p class="text-white text-lg mb-4 text-center drop-shadow font-medium">
+                    A plataforma criada por estudantes para estudantes.<br>
+                    Aqui você encontra tudo o que precisa para conquistar sua vaga nas principais universidades, com o
+                    poder da tecnologia te guiando em cada etapa.
+                </p>
+                <p class="text-white text-lg mb-8 text-center drop-shadow font-medium">
+                    Nosso foco é te preparar para os principais vestibulares do Brasil, como Fuvest, Unicamp e Enem.<br>
+                    Mas se o seu objetivo é outro, não se preocupe, o RePensei também te ajuda nessa jornada!
+                </p>
+                <div class="w-full flex justify-center gap-6 mt-8">
+                    <!-- <button onclick="abrirLogin()"
+                        class="btn-animado bg-gradient-to-r from-pink-400 to-purple-400 text-white text-xl md:text-2xl font-bold px-8 md:px-10 py-3 rounded-2xl shadow-md transition relative">
+                        <span class="material-icons align-middle mr-1">login</span> Login
+                    </button>
+                    <button onclick="abrirCriarConta()"
+                        class="btn-animado bg-gradient-to-r from-purple-400 to-pink-400 text-white text-xl md:text-2xl font-bold px-8 md:px-10 py-3 rounded-2xl shadow-md transition relative">
+                        <span class="material-icons align-middle mr-1">person_add</span> Criar conta
+                    </button> -->
+                </div>
+            </div>
+        </div>
+
+        <div id="tela-resumo" class="tela">
+            <div class="w-full max-w-4xl mx-auto p-8 rounded-2xl flex flex-col items-center"
+                style="background: rgba(255,255,255,0.13);">
+                <h2 class="text-3xl font-bold text-white mb-4">Resumos</h2>
+                <p class="text-white text-lg text-center mb-4">Gerador de resumos:</p>
+                <div class="bg-white bg-opacity-80 rounded-xl p-6 w-full flex flex-col items-center">
+                    <input type="text" id="resumoInput" placeholder="Digite o tema para o resumo"
+                        class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+                    <button id="gerarResumoBtn"
+                        class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg shadow hover:from-purple-600 hover:to-pink-600 transition">
+                        Gerar Resumo
+                    </button>
+                    <div id="resumoOutput"
+                        class="mt-6 w-full text-gray-700 text-left bg-purple-100 p-4 rounded-lg hidden">
+                        <h3 class="text-xl font-semibold text-purple-800 mb-2" id="resumoTitulo"></h3>
+                        <p id="resumoConteudo"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tela-correcao" class="tela">
+            <div class="w-full max-w-4xl mx-auto p-8 rounded-2xl flex flex-col items-center"
+                style="background: rgba(255,255,255,0.13);">
+                <h2 class="text-3xl font-bold text-white mb-4">Correção de Texto</h2>
+                <p class="text-white text-lg text-center mb-4">Corrija seu texto com inteligência artificial:</p>
+                <div class="bg-white bg-opacity-80 rounded-xl p-6 w-full flex flex-col items-center">
+                    <input type="text" id="correcaoTemaInput" placeholder="Tema do texto"
+                        class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+                    <textarea id="correcaoTextoInput" placeholder="Cole o texto para correção aqui..."
+                        class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg h-32 resize-y"></textarea>
+                    <button id="corrigirTextoBtn"
+                        class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg shadow hover:from-purple-600 hover:to-pink-600 transition">
+                        Corrigir Texto
+                    </button>
+                    <div id="correcaoOutput"
+                        class="mt-6 w-full text-gray-700 text-left bg-purple-100 p-4 rounded-lg hidden">
+                        <h3 class="text-xl font-semibold text-purple-800 mb-2">Texto Corrigido:</h3>
+                        <p id="correcaoConteudo"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tela-flashcards" class="tela">
+            <div class="w-full max-w-4xl mx-auto p-8 rounded-2xl flex flex-col items-center"
+                style="background: rgba(255,255,255,0.13);">
+                <h2 class="text-3xl font-bold text-white mb-4">Flashcards</h2>
+                <p class="text-white text-lg text-center mb-4">Gere flashcards para memorizar de forma eficaz!</p>
+                <div class="bg-white bg-opacity-80 rounded-xl p-6 w-full flex flex-col items-center">
+                    <input type="text" id="flashcardInput" placeholder="Digite o tema para os flashcards"
+                        class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+                    <button id="gerarFlashcardsBtn"
+                        class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg shadow hover:from-purple-600 hover:to-pink-600 transition">
+                        Gerar Flashcards
+                    </button>
+                    <div id="flashcardsContainer" class="flex flex-wrap gap-6 justify-center w-full mt-6">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="tela-quiz" class="tela">
+            <div class="w-full max-w-4xl mx-auto p-8 rounded-2xl flex flex-col items-center"
+                style="background: rgba(255,255,255,0.13);">
+                <h2 class="text-3xl font-bold text-white mb-4">Quiz Interativo</h2>
+                <p class="text-white text-lg text-center mb-4">
+                    Teste seus conhecimentos com um quiz!
+                </p>
+                <div class="bg-white bg-opacity-80 rounded-xl p-6 w-full flex flex-col items-center">
+                    <input type="text" id="quizInput" placeholder="Digite o tema para o quiz"
+                        class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+                    <button id="gerarQuizBtn"
+                        class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg shadow hover:from-purple-600 hover:to-pink-600 transition">
+                        Gerar Quiz
+                    </button>
+                    <div id="quizOutput"
+                        class="mt-6 w-full text-gray-700 text-left bg-purple-100 p-4 rounded-lg hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- POPUP DE RESULTADO -->
+        <div id="quizPopup">
+            <div>
+                <h3>Resultado do Quiz</h3>
+                <p id="quizScore">Você acertou X de Y perguntas!</p>
+                <button id="restartQuizBtn" class="btn-primary">Recomeçar</button>
+            </div>
+        </div>
+
+
+
+        <!-- <div id="tela-historico" class="tela">
+            <div class="w-full max-w-2xl mx-auto p-10 rounded-3xl flex flex-col items-center glass shadow-2xl border-2 border-purple-200">
+                <h2 class="text-3xl font-bold text-white mb-4">Histórico</h2>
+                <p class="text-white text-lg text-center">Aqui você verá seu histórico de atividades.</p>
+            </div>
+        </div> -->
+
+
+        <!-- <div id="tela-perfil" class="tela">
+            <div class="w-full max-w-4xl mx-auto p-12 rounded-3xl flex flex-col items-center glass shadow-2xl border-2 border-purple-200">
+                <div class="flex flex-col items-center mb-6">
+                    <img id="profileFoto" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Foto de perfil"
+                        class="w-24 h-24 rounded-full border-4 border-purple-300 shadow mb-4">
+                    <h2 class="text-3xl font-bold text-purple-800 mb-2" id="profileNome">Seu Nome</h2>
+                    <span class="text-purple-500 text-lg mb-2" id="profileEmail">seuemail@email.com</span>
+                </div>
+                <div class="w-full flex flex-col gap-4">
+                   <button id="btnEditarPerfil"
+                        class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg shadow hover:from-purple-600 hover:to-pink-600 transition">
+                        Editar Perfil
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modalLogin" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+            <div
+                class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center modal-anim border-2 border-purple-200 relative">
+                <button onclick="fecharLogin()"
+                    class="absolute top-4 right-4 text-purple-400 hover:text-pink-400 text-2xl z-10">
+                    <span class="material-icons">close</span>
+                </button>
+                <h2 class="text-3xl font-extrabold text-purple-800 mb-6 tracking-wide">Entrar</h2>
+                <input type="email" id="loginEmail" placeholder="E-mail"
+                    class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+                <input type="password" id="loginSenha" placeholder="Senha"
+                    class="w-full mb-6 px-4 py-3 rounded-lg input-custom text-lg" />
+                <button id="entrarBtn"
+                    class="w-full btn-animado bg-gradient-to-r from-pink-400 to-purple-400 text-white font-bold py-3 rounded-lg shadow transition mb-3 text-lg">
+                    Entrar
+                </button>
+                <button onclick="fecharLogin()" class="text-purple-700 hover:underline mt-2 text-base">Cancelar</button>
+            </div>
+        </div>
+        <div id="modalCriarConta"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+            <div
+                class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center modal-anim border-2 border-purple-200 relative">
+                <button onclick="fecharCriarConta()"
+                    class="absolute top-4 right-4 text-purple-400 hover:text-pink-400 text-2xl z-10">
+                    <span class="material-icons">close</span>
+                </button>
+                <h2 class="text-3xl font-extrabold text-purple-800 mb-6 tracking-wide">Criar Conta</h2>
+                <input type="text" id="cadastroNome" placeholder="Nome completo"
+                    class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+                <input type="email" id="cadastroEmail" placeholder="E-mail"
+                    class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+                <input type="password" id="cadastroSenha" placeholder="Senha"
+                    class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+                <input type="password" id="cadastroConfirmarSenha" placeholder="Confirmar senha"
+                    class="w-full mb-6 px-4 py-3 rounded-lg input-custom text-lg" />
+                <button id="criarContaBtn"
+                    class="w-full btn-animado bg-gradient-to-r from-purple-400 to-pink-400 text-white font-bold py-3 rounded-lg shadow transition mb-3 text-lg">
+                    Criar conta
+                </button>
+                <button onclick="fecharCriarConta()"
+                    class="text-purple-700 hover:underline mt-2 text-base">Cancelar</button>
+            </div>
+        </div>
+
+        <div id="modalEditarPerfil" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+            <div
+                class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center modal-anim border-2 border-purple-200 relative">
+                <button onclick="fecharEditarPerfil()"
+                    class="absolute top-4 right-4 text-purple-400 hover:text-pink-400 text-2xl z-10">
+                    <span class="material-icons">close</span>
+                </button>
+                <h2 class="text-3xl font-extrabold text-purple-800 mb-6 tracking-wide">Editar Perfil</h2>
+                <div class="flex items-center justify-center w-full mb-4">
+                    <img id="editFotoPreview" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Pré-visualização da foto"
+                        class="w-24 h-24 rounded-full border-4 border-purple-300 shadow">
+                </div>
+                <label for="editFotoUrl" class="w-full text-left text-gray-700 font-medium mb-1">URL da Foto de Perfil:</label>
+                <input type="text" id="editFotoUrl" placeholder="URL da foto (ex: https://exemplo.com/foto.jpg)"
+                    class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+                <label for="editNome" class="w-full text-left text-gray-700 font-medium mb-1">Nome:</label>
+                <input type="text" id="editNome" placeholder="Nome completo"
+                    class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+                <label for="editEmail" class="w-full text-left text-gray-700 font-medium mb-1">E-mail:</label>
+                <input type="email" id="editEmail" placeholder="E-mail"
+                    class="w-full mb-4 px-4 py-3 rounded-lg input-custom text-lg" />
+                <label for="editSenha" class="w-full text-left text-gray-700 font-medium mb-1">Nova Senha:</label>
+                <input type="password" id="editSenha" placeholder="Deixe em branco para não alterar"
+                    class="w-full mb-6 px-4 py-3 rounded-lg input-custom text-lg" />
+                <button id="salvarEdicaoBtn"
+                    class="w-full btn-animado bg-gradient-to-r from-purple-400 to-pink-400 text-white font-bold py-3 rounded-lg shadow transition mb-3 text-lg">
+                    Salvar Alterações
+                </button>
+                <button onclick="fecharEditarPerfil()"
+                    class="text-purple-700 hover:underline mt-2 text-base">Cancelar</button>
+            </div>
+        </div> -->
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

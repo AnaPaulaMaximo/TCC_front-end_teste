@@ -1,41 +1,24 @@
 /**
  * Exibe uma notificação na tela.
- * A função cria automaticamente o container de notificações se ele não existir.
- *
- * @param {string} message - A mensagem a ser exibida.
- * @param {string} [type='success'] - O tipo de notificação ('success' ou 'error').
+ * (Função showNotification permanece a mesma...)
  */
 function showNotification(message, type = 'success') {
-    // 1. Encontra (ou cria) o container de notificações
     let container = document.getElementById('notification-container');
     if (!container) {
         container = document.createElement('div');
         container.id = 'notification-container';
-        // Classes Tailwind para o container (fixo no canto superior direito)
         container.className = 'fixed top-8 right-8 z-[9999] flex flex-col gap-3';
         document.body.appendChild(container);
     }
-
-    // 2. Define ícone, cor e título com base no tipo
     const isError = type === 'error';
     const iconName = isError ? 'error' : 'check_circle';
-    // Cores alinhadas com seu site: vermelho/pink para erro, roxo para sucesso
     const iconColor = isError ? 'text-red-600' : 'text-purple-600';
     const title = isError ? 'Ocorreu um Erro' : 'Sucesso!';
-
-    // 3. Cria o elemento da notificação (o "toast")
     const toast = document.createElement('div');
-    
-    // 4. Adiciona as classes do Tailwind (aqui está a estética do seu site)
-    // (Fundo branco, bordas arredondadas, sombra, borda leve, etc.)
     toast.className = 'flex items-start gap-3 w-full max-w-sm p-4 bg-white rounded-xl shadow-lg border border-gray-200 notification-toast-enter';
-    
-    // 5. Define o HTML interno da notificação
     toast.innerHTML = `
         <div class="flex-shrink-0">
-            <span class="material-icons ${iconColor}" style="font-size: 24px;">
-                ${iconName}
-            </span>
+            <span class="material-icons ${iconColor}" style="font-size: 24px;">${iconName}</span>
         </div>
         <div class="flex-1 mr-4">
             <p class="font-semibold text-gray-900">${title}</p>
@@ -47,24 +30,16 @@ function showNotification(message, type = 'success') {
             </button>
         </div>
     `;
-
-    // 6. Adiciona ao container
     container.appendChild(toast);
-
-    // 7. Define o temporizador para remover automaticamente (3 segundos)
     const timer = setTimeout(() => {
         toast.classList.remove('notification-toast-enter');
         toast.classList.add('notification-toast-exit');
-        
-        // Remove do DOM após a animação de saída
         toast.addEventListener('animationend', () => {
             toast.remove();
         });
-    }, 3000); // 3000ms = 3 segundos
-
-    // 8. Adiciona o evento para o botão de fechar
+    }, 3000);
     toast.querySelector('button').addEventListener('click', () => {
-        clearTimeout(timer); // Para o timer se for fechado manualmente
+        clearTimeout(timer);
         toast.classList.remove('notification-toast-enter');
         toast.classList.add('notification-toast-exit');
         toast.addEventListener('animationend', () => {
@@ -73,53 +48,63 @@ function showNotification(message, type = 'success') {
     });
 }
 
-
-// ATENÇÃO: Esta é uma versão "Mock" (de fachada) do admin.js
-// Ela não se conecta ao backend e usa dados falsos para testes.
+const API_BASE_URL = 'http://127.0.0.1:5000';
 
 let chartPlano = null;
-let chartQuizzes = null;
+let chartQuizzes = null; 
 
-// --- Verificação de Sessão (Falsa) ---
+// --- Estado dos Filtros ---
+let currentSearch = '';
+let currentPlano = '';
+let debounceTimer;
+
+// --- Verificação de Sessão (Real) ---
 document.addEventListener('DOMContentLoaded', () => {
-    checkAdminSession(); // Verifica se o admin "logou"
+    checkAdminSession(); 
     
     document.getElementById('adminLogoutBtn').addEventListener('click', handleLogout);
 
     setupMenuLinks();
-    setupModalBottons();
-    
-    // Carrega dados falsos
-    loadDashboardData();
-    loadAlunosTable();
+    setupModalButtons();
+    setupFilters();
 });
 
-function checkAdminSession() {
-    // Verifica se o 'currentAdmin' (falso) existe no sessionStorage
-    const adminData = sessionStorage.getItem('currentAdmin');
-    if (!adminData) {
-        // Se não houver, chuta para a tela de login
-        
-        // =====> CORREÇÃO APLICADA AQUI <=====
-        // Trocado 'true' por 'error'
-        showNotification("Você não está logado como admin. Redirecionando...", 'error');
-        // ======================================
+async function checkAdminSession() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/check_session`, {
+            credentials: 'include' 
+        });
 
+        if (!response.ok) {
+            throw new Error('Sessão de admin inválida.');
+        }
+
+        const data = await response.json();
+        document.getElementById('adminName').textContent = data.admin.nome;
+        
+        loadDashboardData();
+        loadAlunosTable();
+
+    } catch (error) {
+        showNotification("Você não está logado como admin. Redirecionando...", 'error');
         setTimeout(() => {
             window.location.href = 'login.html'; 
-        }, 1500); // Dá um tempo para a notificação ser lida
-    } else {
-        // Se houver, preenche o nome
-        const admin = JSON.parse(adminData);
-        document.getElementById('adminName').textContent = admin.nome;
+        }, 1500);
     }
 }
 
-function handleLogout() {
-    // Apenas limpa o sessionStorage e redireciona para o login
-    sessionStorage.removeItem('currentAdmin');
-    // showNotification("Logout (teste) realizado com sucesso!"); // <--- REMOVIDO
-    window.location.href = 'login.html'; 
+async function handleLogout() {
+    try {
+        await fetch(`${API_BASE_URL}/admin/logout`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+    } catch (error) {
+        console.error("Erro ao fazer logout:", error);
+    } finally {
+        sessionStorage.removeItem('currentAdmin'); 
+        window.location.href = 'login.html'; 
+    }
 }
 
 // --- Navegação das Telas ---
@@ -127,91 +112,155 @@ function setupMenuLinks() {
     document.querySelectorAll('.admin-menu-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            const targetId = link.getAttribute('href').substring(1); // Remove o '#'
+            const targetId = link.getAttribute('href').substring(1); 
             
-            // Troca de tela
             document.querySelectorAll('.admin-tela').forEach(tela => {
                 tela.classList.toggle('hidden', tela.id !== `tela-${targetId}`);
             });
 
-            // Troca de link ativo
             document.querySelectorAll('.admin-menu-link').forEach(l => l.classList.remove('bg-purple-900'));
             link.classList.add('bg-purple-900');
         });
     });
 }
 
-// --- Carregamento de Dados (Falsos) ---
-function loadDashboardData() {
-    // Preenche os cards com dados falsos
-    document.getElementById('statTotalAlunos').textContent = "15";
-    document.getElementById('statMediaAcertos').textContent = "82%";
+// --- Carregamento de Dados (Real) ---
+async function loadDashboardData() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/stats`, {
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Falha ao carregar estatísticas.');
 
-    // Gráfico 1: Alunos por Plano (Falso)
-    const planoLabels = ['Premium', 'Freemium'];
-    const planoData = [5, 10]; // 5 premium, 10 freemium
-    renderChartPlanos(planoLabels, planoData);
+        const data = await response.json();
 
-    // Gráfico 2: Quizzes por Dia (Falso)
-    const quizzesLabels = ['25/10', '26/10', '27/10', '28/10', '29/10', '30/10', '31/10'];
-    const quizzesData = [3, 5, 2, 7, 4, 8, 6];
-    renderChartQuizzes(quizzesLabels, quizzesData);
+        // Preenche os cards
+        document.getElementById('statTotalAlunos').textContent = data.total_alunos;
+        document.getElementById('statMediaGeral').textContent = data.media_geral_acertos;
+        document.getElementById('statMediaFilosofia').textContent = data.media_filosofia;
+        document.getElementById('statMediaSociologia').textContent = data.media_sociologia;
+
+        // Gráfico 1: Alunos por Plano
+        const planoLabels = data.alunos_por_plano.map(p => p.plano);
+        const planoData = data.alunos_por_plano.map(p => p.count);
+        renderChartPlanos(planoLabels, planoData);
+
+        // ===============================================
+        // --- INÍCIO DA MUDANÇA (Chamada do Gráfico) ---
+        // ===============================================
+        // Renderiza o novo gráfico de barras AGRUPADO
+        renderChartQuizzesGrouped(
+            data.quizzes_por_plano_e_tema.labels,
+            data.quizzes_por_plano_e_tema.data_filosofia,
+            data.quizzes_por_plano_e_tema.data_sociologia
+        );
+        // ===============================================
+        // --- FIM DA MUDANÇA ---
+        // ===============================================
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
 }
 
-function loadAlunosTable() {
-    // Dados Falsos de Alunos
-    const alunos = [
-        { id_aluno: 1, nome: "Ana Silva", email: "ana@email.com", plano: "premium", url_foto: null },
-        { id_aluno: 2, nome: "Bruno Costa", email: "bruno@email.com", plano: "freemium", url_foto: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' },
-        { id_aluno: 3, nome: "Carla Dias", email: "carla@email.com", plano: "premium", url_foto: null }
-    ];
-
+async function loadAlunosTable() {
     const tabelaBody = document.getElementById('tabelaAlunosBody');
-    tabelaBody.innerHTML = ''; // Limpa a tabela
+    tabelaBody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-gray-500">Carregando alunos...</td></tr>`;
 
-    alunos.forEach(aluno => {
-        const tr = document.createElement('tr');
-        tr.className = 'border-b border-gray-100';
-        tr.innerHTML = `
-            <td class="p-4">
-                <div class="flex items-center gap-3">
-                    <img src="${aluno.url_foto || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'}" alt="Foto" class="w-10 h-10 rounded-full object-cover">
-                    <div>
-                        <p class="font-semibold text-gray-800">${aluno.nome}</p>
-                        <span class="text-xs text-gray-500">ID: ${aluno.id_aluno}</span>
+    const url = new URL(`${API_BASE_URL}/admin/alunos`);
+    if (currentSearch) {
+        url.searchParams.append('search', currentSearch);
+    }
+    if (currentPlano) {
+        url.searchParams.append('plano', currentPlano);
+    }
+
+    try {
+        const response = await fetch(url, { credentials: 'include' });
+        if (!response.ok) throw new Error('Falha ao carregar lista de alunos.');
+
+        const alunos = await response.json();
+        tabelaBody.innerHTML = ''; 
+
+        if (alunos.length === 0) {
+            tabelaBody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-gray-500">Nenhum aluno encontrado.</td></tr>`;
+            return;
+        }
+
+        alunos.forEach(aluno => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-gray-100';
+            
+            const mediaFilo = aluno.media_filosofia ? (aluno.media_filosofia * 100).toFixed(0) + '%' : 'N/A';
+            const mediaSocio = aluno.media_sociologia ? (aluno.media_sociologia * 100).toFixed(0) + '%' : 'N/A';
+            const mediaGeral = aluno.media_geral ? (aluno.media_geral * 100).toFixed(0) + '%' : 'N/A';
+            
+            tr.innerHTML = `
+                <td class="p-4">
+                    <div class="flex items-center gap-3">
+                        <img src="${aluno.url_foto || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'}" alt="Foto" class="w-10 h-10 rounded-full object-cover">
+                        <div>
+                            <p class="font-semibold text-gray-800">${aluno.nome}</p>
+                            <span class="text-xs text-gray-500">ID: ${aluno.id_aluno}</span>
+                        </div>
                     </div>
-                </div>
-            </td>
-            <td class="p-4 text-gray-700">${aluno.email}</td>
-            <td class="p-4">
-                <span class="px-3 py-1 rounded-full text-xs font-semibold ${aluno.plano === 'premium' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}">
-                    ${aluno.plano}
-                </span>
-            </td>
-            <td class="p-4 text-gray-700">
-                <button class="text-blue-500 hover:text-blue-700 p-1" data-action="resultados" data-id="${aluno.id_aluno}" data-nome="${aluno.nome}">
-                    <span class="material-icons text-lg">bar_chart</span>
-                </button>
-                <button class="text-purple-500 hover:text-purple-700 p-1" data-action="editar" data-id="${aluno.id_aluno}">
-                    <span class="material-icons text-lg">edit</span>
-                </button>
-                <button class="text-red-500 hover:text-red-700 p-1" data-action="excluir" data-id="${aluno.id_aluno}">
-                    <span class="material-icons text-lg">delete</span>
-                </button>
-            </td>
-        `;
-        // Adiciona listeners para os botões de ação
-        tr.querySelector('[data-action="editar"]').addEventListener('click', () => openModalEdit(aluno));
-        tr.querySelector('[data-action="excluir"]').addEventListener('click', () => handleExcluirAluno(aluno.id_aluno));
-        tr.querySelector('[data-action="resultados"]').addEventListener('click', () => openModalResultados(aluno.id_aluno, aluno.nome));
-        
-        tabelaBody.appendChild(tr);
+                </td>
+                <td class="p-4 text-gray-700">${aluno.email}</td>
+                <td class="p-4">
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold ${aluno.plano === 'premium' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}">
+                        ${aluno.plano}
+                    </span>
+                </td>
+                <td class="p-4 text-gray-700 font-medium text-center">${aluno.total_quizzes}</td>
+                <td class="p-4 text-gray-700 font-medium">${mediaFilo}</td>
+                <td class="p-4 text-gray-700 font-medium">${mediaSocio}</td>
+                <td class="p-4 text-gray-700 font-bold">${mediaGeral}</td>
+                <td class="p-4 text-gray-700">
+                    <button class="text-blue-500 hover:text-blue-700 p-1" data-action="resultados" data-id="${aluno.id_aluno}" data-nome="${aluno.nome}">
+                        <span class="material-icons text-lg">bar_chart</span>
+                    </button>
+                    <button class="text-purple-500 hover:text-purple-700 p-1" data-action="editar" data-id="${aluno.id_aluno}">
+                        <span class="material-icons text-lg">edit</span>
+                    </button>
+                    <button class="text-red-500 hover:text-red-700 p-1" data-action="excluir" data-id="${aluno.id_aluno}">
+                        <span class="material-icons text-lg">delete</span>
+                    </button>
+                </td>
+            `;
+
+            tr.querySelector('[data-action="editar"]').addEventListener('click', () => openModalEdit(aluno));
+            tr.querySelector('[data-action="excluir"]').addEventListener('click', () => handleExcluirAluno(aluno.id_aluno));
+            tr.querySelector('[data-action="resultados"]').addEventListener('click', () => openModalResultados(aluno.id_aluno, aluno.nome));
+            
+            tabelaBody.appendChild(tr);
+        });
+    } catch (error) {
+        showNotification(error.message, 'error');
+        tabelaBody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-red-500">Erro ao carregar alunos.</td></tr>`;
+    }
+}
+
+// --- Lógica dos Filtros ---
+function setupFilters() {
+    const searchInput = document.getElementById('searchInput');
+    const filterPlano = document.getElementById('filterPlano');
+
+    searchInput.addEventListener('input', (e) => {
+        currentSearch = e.target.value;
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            loadAlunosTable();
+        }, 300);
+    });
+
+    filterPlano.addEventListener('change', (e) => {
+        currentPlano = e.target.value;
+        loadAlunosTable();
     });
 }
 
-// --- Lógica dos Modais (Falsa) ---
-
-function setupModalBottons() {
+// --- Lógica dos Modais (Real) ---
+function setupModalButtons() {
     const modal = document.getElementById('modalAluno');
     const btnNovo = document.getElementById('btnNovoAluno');
     const btnFechar = document.getElementById('fecharModalAluno');
@@ -221,7 +270,6 @@ function setupModalBottons() {
     btnFechar.addEventListener('click', () => modal.classList.add('hidden'));
     btnSalvar.addEventListener('click', handleSalvarAluno);
     
-    // Modal de Resultados
     document.getElementById('fecharModalResultados').addEventListener('click', () => {
         document.getElementById('modalResultados').classList.add('hidden');
     });
@@ -233,6 +281,7 @@ function openModalNew() {
     document.getElementById('alunoNome').value = '';
     document.getElementById('alunoEmail').value = '';
     document.getElementById('alunoPlano').value = 'freemium';
+    document.getElementById('alunoSenha').value = ''; 
     document.getElementById('alunoSenha').placeholder = 'Senha (obrigatório)';
     document.getElementById('modalAluno').classList.remove('hidden');
 }
@@ -243,65 +292,138 @@ function openModalEdit(aluno) {
     document.getElementById('alunoNome').value = aluno.nome;
     document.getElementById('alunoEmail').value = aluno.email;
     document.getElementById('alunoPlano').value = aluno.plano;
+    document.getElementById('alunoSenha').value = ''; 
     document.getElementById('alunoSenha').placeholder = 'Deixe em branco para não alterar';
     document.getElementById('modalAluno').classList.remove('hidden');
 }
 
-function handleSalvarAluno() {
-    // Apenas fecha o modal e mostra notificação
-    showNotification("Modo de Teste: Dados não foram salvos.");
-    document.getElementById('modalAluno').classList.add('hidden');
-    // Em um app real, aqui chamaria loadAlunosTable() após o fetch
-}
+async function handleSalvarAluno() {
+    const id = document.getElementById('alunoId').value;
+    const nome = document.getElementById('alunoNome').value;
+    const email = document.getElementById('alunoEmail').value;
+    const plano = document.getElementById('alunoPlano').value;
+    const senha = document.getElementById('alunoSenha').value;
 
-function handleExcluirAluno(id) {
-    if (confirm(`Modo de teste: Você confirma a exclusão do aluno ${id}?`)) {
-        showNotification("Modo de Teste: Aluno não foi excluído.");
+    const modal = document.getElementById('modalAluno');
+    const btnSalvar = document.getElementById('salvarAlunoBtn');
+    
+    const isEditing = !!id;
+    const url = isEditing ? `${API_BASE_URL}/admin/alunos/${id}` : `${API_BASE_URL}/admin/alunos`;
+    const method = isEditing ? 'PUT' : 'POST';
+
+    let body = { nome, email, plano };
+    if (senha) { 
+        body.senha = senha;
+    }
+    if (!isEditing && !senha) {
+        showNotification('Senha é obrigatória para criar um novo aluno.', 'error');
+        return;
+    }
+
+    btnSalvar.disabled = true;
+    btnSalvar.textContent = "Salvando...";
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Erro ao salvar aluno.');
+        }
+
+        showNotification(data.message, 'success');
+        modal.classList.add('hidden');
+        loadAlunosTable(); 
+        loadDashboardData(); 
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+    } finally {
+        btnSalvar.disabled = false;
+        btnSalvar.textContent = "Salvar";
     }
 }
 
-function openModalResultados(id, nome) {
+async function handleExcluirAluno(id) {
+    if (!confirm(`Você tem certeza que deseja excluir o aluno ID ${id}? Esta ação não pode ser desfeita.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/alunos/${id}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Erro ao excluir aluno.');
+        }
+        
+        showNotification(data.message, 'success');
+        loadAlunosTable(); 
+        loadDashboardData(); 
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+async function openModalResultados(id, nome) {
     const modal = document.getElementById('modalResultados');
     const titulo = document.getElementById('modalResultadosTitulo');
     const container = document.getElementById('listaResultadosContainer');
     
     titulo.textContent = `Resultados de: ${nome}`;
-    
-    // Dados Falsos de Resultados
-    const resultados = [
-        { tema: "Filosofia Grega", acertos: 8, total_perguntas: 10, data_criacao: new Date().toISOString() },
-        { tema: "Sociologia Clássica", acertos: 5, total_perguntas: 10, data_criacao: new Date(Date.now() - 86400000).toISOString() } // Ontem
-    ];
-        
-    if (resultados.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center">Nenhum resultado de quiz encontrado para este aluno.</p>';
-        modal.classList.remove('hidden');
-        return;
-    }
-
-    container.innerHTML = ''; // Limpa o "Carregando..."
-    resultados.forEach(res => {
-        const dataFormatada = new Date(res.data_criacao).toLocaleString('pt-BR');
-        const perc = (res.acertos / res.total_perguntas) * 100;
-        
-        const div = document.createElement('div');
-        div.className = 'p-4 border-b border-gray-200';
-        div.innerHTML = `
-            <div class="flex justify-between items-center mb-1">
-                <span class="font-semibold text-purple-700">${res.tema}</span>
-                <span class="font-bold text-lg ${perc >= 70 ? 'text-green-600' : 'text-red-500'}">
-                    ${perc.toFixed(0)}%
-                </span>
-            </div>
-            <div class="flex justify-between items-center text-sm text-gray-500">
-                <span>${res.acertos} de ${res.total_perguntas} corretas</span>
-                <span>${dataFormatada}</span>
-            </div>
-        `;
-        container.appendChild(div);
-    });
-
+    container.innerHTML = '<p class="text-gray-500 text-center">Carregando resultados...</p>';
     modal.classList.remove('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/alunos/${id}/resultados`, {
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Falha ao carregar resultados.');
+
+        const resultados = await response.json();
+        
+        if (resultados.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center">Nenhum resultado de quiz encontrado para este aluno.</p>';
+            return;
+        }
+
+        container.innerHTML = ''; 
+        resultados.forEach(res => {
+            const dataFormatada = new Date(res.data_criacao).toLocaleString('pt-BR');
+            const perc = res.total_perguntas > 0 ? (res.acertos / res.total_perguntas) * 100 : 0;
+            
+            const div = document.createElement('div');
+            div.className = 'p-4 border-b border-gray-200';
+            div.innerHTML = `
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-semibold text-purple-700">${res.tema}</span>
+                    <span class="font-bold text-lg ${perc >= 70 ? 'text-green-600' : 'text-red-500'}">
+                        ${perc.toFixed(0)}%
+                    </span>
+                </div>
+                <div class="flex justify-between items-center text-sm text-gray-500">
+                    <span>${res.acertos} de ${res.total_perguntas} corretas</span>
+                    <span>${dataFormatada}</span>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
+    } catch (error) {
+        container.innerHTML = `<p class="text-red-500 text-center">${error.message}</p>`;
+        showNotification(error.message, 'error');
+    }
 }
 
 
@@ -310,8 +432,19 @@ function openModalResultados(id, nome) {
 function renderChartPlanos(labels, data) {
     const ctx = document.getElementById('chartAlunosPlano').getContext('2d');
     if (chartPlano) {
-        chartPlano.destroy(); // Destrói gráfico anterior para recriar
+        chartPlano.destroy(); 
     }
+    const backgroundColors = labels.map(label => {
+        if (label === 'premium') return 'rgba(234, 179, 8, 0.7)'; // Yellow
+        if (label === 'freemium') return 'rgba(59, 130, 246, 0.7)'; // Blue
+        return 'rgba(168, 85, 247, 0.7)'; 
+    });
+    const borderColors = labels.map(label => {
+        if (label === 'premium') return 'rgba(234, 179, 8, 1)';
+        if (label === 'freemium') return 'rgba(59, 130, 246, 1)';
+        return 'rgba(168, 85, 247, 1)';
+    });
+
     chartPlano = new Chart(ctx, {
         type: 'pie',
         data: {
@@ -319,16 +452,8 @@ function renderChartPlanos(labels, data) {
             datasets: [{
                 label: 'Alunos por Plano',
                 data: data,
-                backgroundColor: [
-                    'rgba(168, 85, 247, 0.7)', // Purple
-                    'rgba(234, 179, 8, 0.7)', // Yellow
-                    'rgba(59, 130, 246, 0.7)' // Blue
-                ],
-                borderColor: [
-                    'rgba(168, 85, 247, 1)',
-                    'rgba(234, 179, 8, 1)',
-                    'rgba(59, 130, 246, 1)'
-                ],
+                backgroundColor: backgroundColors,
+                borderColor: borderColors,
                 borderWidth: 1
             }]
         },
@@ -339,29 +464,57 @@ function renderChartPlanos(labels, data) {
     });
 }
 
-function renderChartQuizzes(labels, data) {
-    const ctx = document.getElementById('chartQuizzesDia').getContext('2d');
+// ===============================================
+// --- INÍCIO DA MUDANÇA (Função do Gráfico) ---
+// ===============================================
+
+// Função ATUALIZADA para renderizar o gráfico de BARRAS AGRUPADO
+function renderChartQuizzesGrouped(labels, dataFilosofia, dataSociologia) {
+    const ctx = document.getElementById('chartQuizzesGrouped').getContext('2d'); // ID ATUALIZADO
      if (chartQuizzes) {
         chartQuizzes.destroy();
     }
     chartQuizzes = new Chart(ctx, {
-        type: 'line',
+        type: 'bar', 
         data: {
-            labels: labels, // ['Dia 1', 'Dia 2', ...]
-            datasets: [{
-                label: 'Quizzes Realizados',
-                data: data, // [5, 10, 3, ...]
-                fill: true,
-                backgroundColor: 'rgba(139, 92, 246, 0.2)',
-                borderColor: 'rgba(139, 92, 246, 1)',
-                tension: 0.1
-            }]
+            labels: labels, // ['freemium', 'premium']
+            datasets: [
+                {
+                    label: 'Filosofia',
+                    data: dataFilosofia, // [filo_free, filo_prem]
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)', // Azul (cor do card)
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Sociologia',
+                    data: dataSociologia, // [socio_free, socio_prem]
+                    backgroundColor: 'rgba(236, 72, 153, 0.7)', // Rosa/Pink (cor do card)
+                    borderColor: 'rgba(236, 72, 153, 1)',
+                    borderWidth: 1
+                }
+            ]
         },
         options: {
             responsive: true,
             scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                y: { 
+                    beginAtZero: true, 
+                    ticks: { 
+                        stepSize: 1, 
+                        precision: 0 
+                    } 
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true, // Mostra a legenda (Filosofia / Sociologia)
+                    position: 'top'
+                }
             }
         }
     });
 }
+// ===============================================
+// --- FIM DA MUDANÇA ---
+// ===============================================
