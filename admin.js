@@ -73,53 +73,69 @@ function showNotification(message, type = 'success') {
     });
 }
 
+// --- FIM DA VERSÃO MOCK ---
+// --- INÍCIO DA VERSÃO REAL ---
 
-// ATENÇÃO: Esta é uma versão "Mock" (de fachada) do admin.js
-// Ela não se conecta ao backend e usa dados falsos para testes.
+const API_BASE_URL = 'http://127.0.0.1:5000'; // URL do backend
 
 let chartPlano = null;
 let chartQuizzes = null;
 
-// --- Verificação de Sessão (Falsa) ---
+// --- Estado dos Filtros ---
+let currentSearch = '';
+let currentPlano = '';
+let debounceTimer;
+
+// --- Verificação de Sessão (Real) ---
 document.addEventListener('DOMContentLoaded', () => {
-    checkAdminSession(); // Verifica se o admin "logou"
+    checkAdminSession(); // Verifica se o admin logou
     
     document.getElementById('adminLogoutBtn').addEventListener('click', handleLogout);
 
     setupMenuLinks();
-    setupModalBottons();
-    
-    // Carrega dados falsos
-    loadDashboardData();
-    loadAlunosTable();
+    setupModalButtons();
+    setupFilters();
 });
 
-function checkAdminSession() {
-    // Verifica se o 'currentAdmin' (falso) existe no sessionStorage
-    const adminData = sessionStorage.getItem('currentAdmin');
-    if (!adminData) {
-        // Se não houver, chuta para a tela de login
-        
-        // =====> CORREÇÃO APLICADA AQUI <=====
-        // Trocado 'true' por 'error'
-        showNotification("Você não está logado como admin. Redirecionando...", 'error');
-        // ======================================
+async function checkAdminSession() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/check_session`, {
+            credentials: 'include' // Essencial para enviar cookies de sessão
+        });
 
+        if (!response.ok) {
+            // Se não estiver logado, redireciona
+            throw new Error('Sessão de admin inválida.');
+        }
+
+        const data = await response.json();
+        document.getElementById('adminName').textContent = data.admin.nome;
+        
+        // Se logado, carrega os dados
+        loadDashboardData();
+        loadAlunosTable();
+
+    } catch (error) {
+        showNotification("Você não está logado como admin. Redirecionando...", 'error');
         setTimeout(() => {
             window.location.href = 'login.html'; 
-        }, 1500); // Dá um tempo para a notificação ser lida
-    } else {
-        // Se houver, preenche o nome
-        const admin = JSON.parse(adminData);
-        document.getElementById('adminName').textContent = admin.nome;
+        }, 1500);
     }
 }
 
-function handleLogout() {
-    // Apenas limpa o sessionStorage e redireciona para o login
-    sessionStorage.removeItem('currentAdmin');
-    // showNotification("Logout (teste) realizado com sucesso!"); // <--- REMOVIDO
-    window.location.href = 'login.html'; 
+async function handleLogout() {
+    try {
+        await fetch(`${API_BASE_URL}/admin/logout`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+    } catch (error) {
+        console.error("Erro ao fazer logout:", error);
+    } finally {
+        // Sempre redireciona, mesmo se o backend falhar
+        sessionStorage.removeItem('currentAdmin'); // Limpa o storage local (backup)
+        window.location.href = 'login.html'; 
+    }
 }
 
 // --- Navegação das Telas ---
@@ -141,77 +157,137 @@ function setupMenuLinks() {
     });
 }
 
-// --- Carregamento de Dados (Falsos) ---
-function loadDashboardData() {
-    // Preenche os cards com dados falsos
-    document.getElementById('statTotalAlunos').textContent = "15";
-    document.getElementById('statMediaAcertos').textContent = "82%";
+// --- Carregamento de Dados (Real) ---
+async function loadDashboardData() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/stats`, {
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Falha ao carregar estatísticas.');
 
-    // Gráfico 1: Alunos por Plano (Falso)
-    const planoLabels = ['Premium', 'Freemium'];
-    const planoData = [5, 10]; // 5 premium, 10 freemium
-    renderChartPlanos(planoLabels, planoData);
+        const data = await response.json();
 
-    // Gráfico 2: Quizzes por Dia (Falso)
-    const quizzesLabels = ['25/10', '26/10', '27/10', '28/10', '29/10', '30/10', '31/10'];
-    const quizzesData = [3, 5, 2, 7, 4, 8, 6];
-    renderChartQuizzes(quizzesLabels, quizzesData);
+        // Preenche os cards
+        document.getElementById('statTotalAlunos').textContent = data.total_alunos;
+        document.getElementById('statMediaGeral').textContent = data.media_geral_acertos;
+        document.getElementById('statMediaFilosofia').textContent = data.media_filosofia;
+        document.getElementById('statMediaSociologia').textContent = data.media_sociologia;
+
+        // Gráfico 1: Alunos por Plano
+        const planoLabels = data.alunos_por_plano.map(p => p.plano);
+        const planoData = data.alunos_por_plano.map(p => p.count);
+        renderChartPlanos(planoLabels, planoData);
+
+        // Gráfico 2: Quizzes por Dia
+        renderChartQuizzes(data.quizzes_por_dia.labels, data.quizzes_por_dia.data);
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
 }
 
-function loadAlunosTable() {
-    // Dados Falsos de Alunos
-    const alunos = [
-        { id_aluno: 1, nome: "Ana Silva", email: "ana@email.com", plano: "premium", url_foto: null },
-        { id_aluno: 2, nome: "Bruno Costa", email: "bruno@email.com", plano: "freemium", url_foto: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' },
-        { id_aluno: 3, nome: "Carla Dias", email: "carla@email.com", plano: "premium", url_foto: null }
-    ];
-
+async function loadAlunosTable() {
     const tabelaBody = document.getElementById('tabelaAlunosBody');
-    tabelaBody.innerHTML = ''; // Limpa a tabela
+    tabelaBody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-gray-500">Carregando alunos...</td></tr>`;
 
-    alunos.forEach(aluno => {
-        const tr = document.createElement('tr');
-        tr.className = 'border-b border-gray-100';
-        tr.innerHTML = `
-            <td class="p-4">
-                <div class="flex items-center gap-3">
-                    <img src="${aluno.url_foto || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'}" alt="Foto" class="w-10 h-10 rounded-full object-cover">
-                    <div>
-                        <p class="font-semibold text-gray-800">${aluno.nome}</p>
-                        <span class="text-xs text-gray-500">ID: ${aluno.id_aluno}</span>
+    // Constrói a URL com os parâmetros de filtro
+    const url = new URL(`${API_BASE_URL}/admin/alunos`);
+    if (currentSearch) {
+        url.searchParams.append('search', currentSearch);
+    }
+    if (currentPlano) {
+        url.searchParams.append('plano', currentPlano);
+    }
+
+    try {
+        const response = await fetch(url, { credentials: 'include' });
+        if (!response.ok) throw new Error('Falha ao carregar lista de alunos.');
+
+        const alunos = await response.json();
+        tabelaBody.innerHTML = ''; // Limpa a tabela
+
+        if (alunos.length === 0) {
+            tabelaBody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-gray-500">Nenhum aluno encontrado.</td></tr>`;
+            return;
+        }
+
+        alunos.forEach(aluno => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-gray-100';
+            
+            // Formata as médias
+            const mediaFilo = aluno.media_filosofia ? (aluno.media_filosofia * 100).toFixed(0) + '%' : 'N/A';
+            const mediaSocio = aluno.media_sociologia ? (aluno.media_sociologia * 100).toFixed(0) + '%' : 'N/A';
+            const mediaGeral = aluno.media_geral ? (aluno.media_geral * 100).toFixed(0) + '%' : 'N/A';
+
+            tr.innerHTML = `
+                <td class="p-4">
+                    <div class="flex items-center gap-3">
+                        <img src="${aluno.url_foto || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'}" alt="Foto" class="w-10 h-10 rounded-full object-cover">
+                        <div>
+                            <p class="font-semibold text-gray-800">${aluno.nome}</p>
+                            <span class="text-xs text-gray-500">ID: ${aluno.id_aluno}</span>
+                        </div>
                     </div>
-                </div>
-            </td>
-            <td class="p-4 text-gray-700">${aluno.email}</td>
-            <td class="p-4">
-                <span class="px-3 py-1 rounded-full text-xs font-semibold ${aluno.plano === 'premium' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}">
-                    ${aluno.plano}
-                </span>
-            </td>
-            <td class="p-4 text-gray-700">
-                <button class="text-blue-500 hover:text-blue-700 p-1" data-action="resultados" data-id="${aluno.id_aluno}" data-nome="${aluno.nome}">
-                    <span class="material-icons text-lg">bar_chart</span>
-                </button>
-                <button class="text-purple-500 hover:text-purple-700 p-1" data-action="editar" data-id="${aluno.id_aluno}">
-                    <span class="material-icons text-lg">edit</span>
-                </button>
-                <button class="text-red-500 hover:text-red-700 p-1" data-action="excluir" data-id="${aluno.id_aluno}">
-                    <span class="material-icons text-lg">delete</span>
-                </button>
-            </td>
-        `;
-        // Adiciona listeners para os botões de ação
-        tr.querySelector('[data-action="editar"]').addEventListener('click', () => openModalEdit(aluno));
-        tr.querySelector('[data-action="excluir"]').addEventListener('click', () => handleExcluirAluno(aluno.id_aluno));
-        tr.querySelector('[data-action="resultados"]').addEventListener('click', () => openModalResultados(aluno.id_aluno, aluno.nome));
-        
-        tabelaBody.appendChild(tr);
+                </td>
+                <td class="p-4 text-gray-700">${aluno.email}</td>
+                <td class="p-4">
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold ${aluno.plano === 'premium' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}">
+                        ${aluno.plano}
+                    </span>
+                </td>
+                <td class="p-4 text-gray-700 font-medium">${mediaFilo}</td>
+                <td class="p-4 text-gray-700 font-medium">${mediaSocio}</td>
+                <td class="p-4 text-gray-700 font-bold">${mediaGeral}</td>
+                
+                <td class="p-4 text-gray-700">
+                    <button class="text-blue-500 hover:text-blue-700 p-1" data-action="resultados" data-id="${aluno.id_aluno}" data-nome="${aluno.nome}">
+                        <span class="material-icons text-lg">bar_chart</span>
+                    </button>
+                    <button class="text-purple-500 hover:text-purple-700 p-1" data-action="editar" data-id="${aluno.id_aluno}">
+                        <span class="material-icons text-lg">edit</span>
+                    </button>
+                    <button class="text-red-500 hover:text-red-700 p-1" data-action="excluir" data-id="${aluno.id_aluno}">
+                        <span class="material-icons text-lg">delete</span>
+                    </button>
+                </td>
+            `;
+            // Adiciona listeners para os botões de ação
+            tr.querySelector('[data-action="editar"]').addEventListener('click', () => openModalEdit(aluno));
+            tr.querySelector('[data-action="excluir"]').addEventListener('click', () => handleExcluirAluno(aluno.id_aluno));
+            tr.querySelector('[data-action="resultados"]').addEventListener('click', () => openModalResultados(aluno.id_aluno, aluno.nome));
+            
+            tabelaBody.appendChild(tr);
+        });
+    } catch (error) {
+        showNotification(error.message, 'error');
+        tabelaBody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-red-500">Erro ao carregar alunos.</td></tr>`;
+    }
+}
+
+// --- Lógica dos Filtros ---
+function setupFilters() {
+    const searchInput = document.getElementById('searchInput');
+    const filterPlano = document.getElementById('filterPlano');
+
+    searchInput.addEventListener('input', (e) => {
+        currentSearch = e.target.value;
+        // Debounce: espera 300ms após o usuário parar de digitar
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            loadAlunosTable();
+        }, 300);
+    });
+
+    filterPlano.addEventListener('change', (e) => {
+        currentPlano = e.target.value;
+        loadAlunosTable();
     });
 }
 
-// --- Lógica dos Modais (Falsa) ---
+// --- Lógica dos Modais (Real) ---
 
-function setupModalBottons() {
+function setupModalButtons() {
     const modal = document.getElementById('modalAluno');
     const btnNovo = document.getElementById('btnNovoAluno');
     const btnFechar = document.getElementById('fecharModalAluno');
@@ -233,6 +309,7 @@ function openModalNew() {
     document.getElementById('alunoNome').value = '';
     document.getElementById('alunoEmail').value = '';
     document.getElementById('alunoPlano').value = 'freemium';
+    document.getElementById('alunoSenha').value = ''; // Limpa o campo senha
     document.getElementById('alunoSenha').placeholder = 'Senha (obrigatório)';
     document.getElementById('modalAluno').classList.remove('hidden');
 }
@@ -243,65 +320,138 @@ function openModalEdit(aluno) {
     document.getElementById('alunoNome').value = aluno.nome;
     document.getElementById('alunoEmail').value = aluno.email;
     document.getElementById('alunoPlano').value = aluno.plano;
+    document.getElementById('alunoSenha').value = ''; // Limpa o campo senha
     document.getElementById('alunoSenha').placeholder = 'Deixe em branco para não alterar';
     document.getElementById('modalAluno').classList.remove('hidden');
 }
 
-function handleSalvarAluno() {
-    // Apenas fecha o modal e mostra notificação
-    showNotification("Modo de Teste: Dados não foram salvos.");
-    document.getElementById('modalAluno').classList.add('hidden');
-    // Em um app real, aqui chamaria loadAlunosTable() após o fetch
-}
+async function handleSalvarAluno() {
+    const id = document.getElementById('alunoId').value;
+    const nome = document.getElementById('alunoNome').value;
+    const email = document.getElementById('alunoEmail').value;
+    const plano = document.getElementById('alunoPlano').value;
+    const senha = document.getElementById('alunoSenha').value;
 
-function handleExcluirAluno(id) {
-    if (confirm(`Modo de teste: Você confirma a exclusão do aluno ${id}?`)) {
-        showNotification("Modo de Teste: Aluno não foi excluído.");
+    const modal = document.getElementById('modalAluno');
+    const btnSalvar = document.getElementById('salvarAlunoBtn');
+    
+    // Define a URL e o método (Criar ou Atualizar)
+    const isEditing = !!id;
+    const url = isEditing ? `${API_BASE_URL}/admin/alunos/${id}` : `${API_BASE_URL}/admin/alunos`;
+    const method = isEditing ? 'PUT' : 'POST';
+
+    // Monta o body
+    let body = { nome, email, plano };
+    if (senha) { // Só inclui a senha se ela for preenchida
+        body.senha = senha;
+    }
+    if (!isEditing && !senha) {
+        showNotification('Senha é obrigatória para criar um novo aluno.', 'error');
+        return;
+    }
+
+    btnSalvar.disabled = true;
+    btnSalvar.textContent = "Salvando...";
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Erro ao salvar aluno.');
+        }
+
+        showNotification(data.message, 'success');
+        modal.classList.add('hidden');
+        loadAlunosTable(); // Recarrega a tabela
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+    } finally {
+        btnSalvar.disabled = false;
+        btnSalvar.textContent = "Salvar";
     }
 }
 
-function openModalResultados(id, nome) {
+async function handleExcluirAluno(id) {
+    if (!confirm(`Você tem certeza que deseja excluir o aluno ID ${id}? Esta ação não pode ser desfeita.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/alunos/${id}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Erro ao excluir aluno.');
+        }
+        
+        showNotification(data.message, 'success');
+        loadAlunosTable(); // Recarrega a tabela
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+async function openModalResultados(id, nome) {
     const modal = document.getElementById('modalResultados');
     const titulo = document.getElementById('modalResultadosTitulo');
     const container = document.getElementById('listaResultadosContainer');
     
     titulo.textContent = `Resultados de: ${nome}`;
-    
-    // Dados Falsos de Resultados
-    const resultados = [
-        { tema: "Filosofia Grega", acertos: 8, total_perguntas: 10, data_criacao: new Date().toISOString() },
-        { tema: "Sociologia Clássica", acertos: 5, total_perguntas: 10, data_criacao: new Date(Date.now() - 86400000).toISOString() } // Ontem
-    ];
-        
-    if (resultados.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center">Nenhum resultado de quiz encontrado para este aluno.</p>';
-        modal.classList.remove('hidden');
-        return;
-    }
-
-    container.innerHTML = ''; // Limpa o "Carregando..."
-    resultados.forEach(res => {
-        const dataFormatada = new Date(res.data_criacao).toLocaleString('pt-BR');
-        const perc = (res.acertos / res.total_perguntas) * 100;
-        
-        const div = document.createElement('div');
-        div.className = 'p-4 border-b border-gray-200';
-        div.innerHTML = `
-            <div class="flex justify-between items-center mb-1">
-                <span class="font-semibold text-purple-700">${res.tema}</span>
-                <span class="font-bold text-lg ${perc >= 70 ? 'text-green-600' : 'text-red-500'}">
-                    ${perc.toFixed(0)}%
-                </span>
-            </div>
-            <div class="flex justify-between items-center text-sm text-gray-500">
-                <span>${res.acertos} de ${res.total_perguntas} corretas</span>
-                <span>${dataFormatada}</span>
-            </div>
-        `;
-        container.appendChild(div);
-    });
-
+    container.innerHTML = '<p class="text-gray-500 text-center">Carregando resultados...</p>';
     modal.classList.remove('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/alunos/${id}/resultados`, {
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Falha ao carregar resultados.');
+
+        const resultados = await response.json();
+        
+        if (resultados.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center">Nenhum resultado de quiz encontrado para este aluno.</p>';
+            return;
+        }
+
+        container.innerHTML = ''; // Limpa o "Carregando..."
+        resultados.forEach(res => {
+            const dataFormatada = new Date(res.data_criacao).toLocaleString('pt-BR');
+            const perc = (res.acertos / res.total_perguntas) * 100;
+            
+            const div = document.createElement('div');
+            div.className = 'p-4 border-b border-gray-200';
+            div.innerHTML = `
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-semibold text-purple-700">${res.tema}</span>
+                    <span class="font-bold text-lg ${perc >= 70 ? 'text-green-600' : 'text-red-500'}">
+                        ${perc.toFixed(0)}%
+                    </span>
+                </div>
+                <div class="flex justify-between items-center text-sm text-gray-500">
+                    <span>${res.acertos} de ${res.total_perguntas} corretas</span>
+                    <span>${dataFormatada}</span>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
+    } catch (error) {
+        container.innerHTML = `<p class="text-red-500 text-center">${error.message}</p>`;
+        showNotification(error.message, 'error');
+    }
 }
 
 
@@ -320,14 +470,14 @@ function renderChartPlanos(labels, data) {
                 label: 'Alunos por Plano',
                 data: data,
                 backgroundColor: [
-                    'rgba(168, 85, 247, 0.7)', // Purple
-                    'rgba(234, 179, 8, 0.7)', // Yellow
-                    'rgba(59, 130, 246, 0.7)' // Blue
+                    'rgba(234, 179, 8, 0.7)', // Yellow (para premium)
+                    'rgba(59, 130, 246, 0.7)', // Blue (para freemium)
+                    'rgba(168, 85, 247, 0.7)' // Purple (fallback)
                 ],
                 borderColor: [
-                    'rgba(168, 85, 247, 1)',
                     'rgba(234, 179, 8, 1)',
-                    'rgba(59, 130, 246, 1)'
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(168, 85, 247, 1)'
                 ],
                 borderWidth: 1
             }]
