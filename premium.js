@@ -1,9 +1,6 @@
 /**
  * Exibe uma notificação na tela.
- * A função cria automaticamente o container de notificações se ele não existir.
- *
- * @param {string} message - A mensagem a ser exibida.
- * @param {string} [type='success'] - O tipo de notificação ('success' ou 'error').
+ * (A função showNotification permanece a mesma...)
  */
 function showNotification(message, type = 'success') {
     // 1. Encontra (ou cria) o container de notificações
@@ -88,7 +85,8 @@ let currentUser = {
 };
 
 // --- Funções de UI (Sidebar, Telas, etc. - Mantidas Globais ou Como Estavam) ---
-
+// (toggleSidebar, moveMenuUnderline, activateMenuLink, activateSidebarLink)
+// ... (O código dessas funções permanece o mesmo) ...
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const openBtn = document.getElementById('openSidebarBtn');
@@ -144,6 +142,7 @@ function activateSidebarLink(target) {
     }
 }
 
+
 // --- Funções Auxiliares ---
 function stripMarkdown(text) {
     if (!text) return '';
@@ -162,7 +161,8 @@ function stripMarkdown(text) {
 
 
 // ---> FUNÇÕES DO CHAT <---
-
+// (convertMarkdownToHtml, addMessage, showTypingIndicator, connectToChat, sendMessage)
+// ... (O código dessas funções permanece o mesmo) ...
 function convertMarkdownToHtml(markdownText) {
     if (!markdownText) return '';
     let htmlText = markdownText;
@@ -300,11 +300,10 @@ function sendMessage() {
     showTypingIndicator(true); // Chama a função global
 }
 
-// ---> FIM DAS FUNÇÕES DO CHAT <---
-
 
 // --- Funções de Autenticação e Perfil ---
-
+// (checkLoginStatus, updateAuthButton, handleLogout, updateProfileDisplay, abrir/fecharEditarPerfil)
+// ... (O código dessas funções permanece o mesmo) ...
 function checkLoginStatus() {
     const storedUser = sessionStorage.getItem('currentUser');
     if (!storedUser) {
@@ -378,6 +377,98 @@ window.fecharEditarPerfil = function () {
     document.getElementById('modalEditarPerfil').classList.add('hidden');
 }
 
+
+// ===> INÍCIO DA NOVA FUNÇÃO <===
+/**
+ * Busca o histórico de atividades do usuário no backend e renderiza na tela.
+ */
+async function fetchHistorico() {
+    const container = document.getElementById('historicoContainer');
+    if (!container) {
+        console.error("Container do histórico #historicoContainer não encontrado.");
+        return;
+    }
+    container.innerHTML = '<p class="text-white text-center">Carregando histórico...</p>';
+
+    if (!currentUser || !currentUser.id) {
+        container.innerHTML = '<p class="text-yellow-300 text-center">Erro: Usuário não logado.</p>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/historico/${currentUser.id}`, {
+            credentials: 'include' // Envia cookies da sessão
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Não foi possível carregar o histórico.');
+        }
+
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p class="text-white text-center">Nenhuma atividade encontrada no seu histórico.</p>';
+            return;
+        }
+
+        container.innerHTML = ''; // Limpa o "Carregando..."
+
+        // Mapeia os tipos de atividade para ícones do Material Icons
+        const iconMap = {
+            'quiz': 'quiz',
+            'resumo': 'article',
+            'correcao': 'edit_document', // Ícone melhorado
+            'flashcard': 'style'
+        };
+        
+        // Mapeia os tipos para nomes mais amigáveis
+        const nameMap = {
+            'quiz': 'Quiz',
+            'resumo': 'Resumo',
+            'correcao': 'Correção',
+            'flashcard': 'Flashcards'
+        };
+
+        data.forEach(item => {
+            const card = document.createElement('div');
+            // Adiciona um cursor-pointer se quisermos adicionar cliques no futuro
+            card.className = 'bg-white/10 p-4 rounded-lg flex items-center justify-between text-white shadow-md border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer'; 
+            
+            const tipo = item.tipo_atividade || 'desconhecido';
+            const icon = iconMap[tipo] || 'history';
+            const nomeAtividade = nameMap[tipo] || 'Atividade';
+            
+            // Formata o título e os detalhes
+            const title = `${nomeAtividade}: ${item.tema || 'Tema não registrado'}`;
+            let details = new Date(item.data_criacao).toLocaleDateString('pt-BR');
+
+            // Adiciona detalhes específicos do quiz
+            if (tipo === 'quiz') {
+                details += ` - <span class="font-semibold text-pink-300">${item.acertos} / ${item.total_perguntas} acertos</span>`;
+            }
+
+            card.innerHTML = `
+                <div class="flex items-center gap-4">
+                    <span class="material-icons text-pink-300 text-2xl">${icon}</span>
+                    <div>
+                        <p class="font-semibold text-base">${title}</p>
+                        <p class="text-sm text-white/80">${details}</p>
+                    </div>
+                </div>
+                <span class="material-icons text-white/70">chevron_right</span>
+            `;
+            container.appendChild(card);
+        });
+
+    } catch (error) {
+        console.error('Erro ao buscar histórico:', error);
+        container.innerHTML = `<p class="text-yellow-300 text-center">Erro ao carregar histórico: ${error.message}</p>`;
+        showNotification(`Erro ao carregar histórico: ${error.message}`, 'error');
+    }
+}
+// ===> FIM DA NOVA FUNÇÃO <===
+
+
 function showTela(page) {
     document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa', 'fade-in'));
     const telaNova = document.getElementById('tela-' + page);
@@ -388,6 +479,14 @@ function showTela(page) {
     if (page === 'perfil') {
         updateProfileDisplay();
     }
+    
+    // ===> MODIFICADO <===
+    if (page === 'historico') {
+        // Chama a função para buscar dados quando a tela de histórico for mostrada
+        fetchHistorico(); 
+    }
+    // ====================
+
     if (page === 'chat') {
         // Conecta ao chat com um pequeno delay para garantir que a UI está visível
         setTimeout(connectToChat, 100);
@@ -406,6 +505,16 @@ async function salvarResultadoQuiz(tema, acertos, totalPerguntas) {
         console.warn("Não é possível salvar o resultado: usuário não logado.");
         return;
     }
+    
+    // Trata o tema "Ambos" do freemium
+    if (tema === 'ambos') {
+        tema = 'Filosofia e Sociologia';
+    } else if (tema === 'filosofia') {
+        tema = 'Filosofia';
+    } else if (tema === 'sociologia') {
+        tema = 'Sociologia';
+    }
+    // Temas customizados (premium) permanecem como estão
     
     const payload = {
         id_aluno: currentUser.id,
@@ -478,6 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Lógica de Edição de Perfil ---
+    // (O código de Edição de Perfil permanece o mesmo) ...
     const btnEditar = document.getElementById('btnEditarPerfil');
     if (btnEditar) btnEditar.addEventListener('click', abrirEditarPerfil);
 
@@ -543,8 +653,12 @@ document.addEventListener('DOMContentLoaded', () => {
         imgPreview.src = e.target.value || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
     });
 
-    // --- Lógica das Ferramentas Premium (IA) ---
 
+    // --- Lógica das Ferramentas Premium (IA) ---
+    // (O código de Resumo, Correção, Flashcards e Quiz permanece o mesmo,
+    // pois a lógica de salvar foi adicionada ao backend, exceto pelo quiz
+    // que já chamava salvarResultadoQuiz)
+    
      // Gerar Resumo
     const btnResumo = document.getElementById('gerarResumoBtn');
     if (btnResumo) btnResumo.addEventListener('click', async () => {
@@ -908,6 +1022,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+
     // --- LÓGICA DO CHATBOT ---
      const sendButton = document.getElementById('chat-send-btn');
      const chatInput = document.getElementById('chat-input');
@@ -927,4 +1042,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-}); // Fim do DOMContentLoaded
+}); // Fim do DOMContentLoaded  

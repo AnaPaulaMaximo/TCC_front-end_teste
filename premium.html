@@ -206,12 +206,16 @@
         </div>
 
         <div id="tela-historico" class="tela w-full max-w-4xl">
-             <div class="w-full mx-auto p-12 rounded-3xl flex flex-col items-center glass shadow-2xl border-2 border-purple-200">
-                <h2 class="text-3xl font-bold text-white mb-4">Histórico</h2>
-                <p class="text-white text-lg text-center">
-                    Aqui você verá seu histórico de atividades. (Funcionalidade em desenvolvimento)
-                </p>
+             <div class="w-full mx-auto p-8 md:p-12 rounded-3xl flex flex-col items-center glass shadow-2xl border-2 border-purple-200">
+                <h2 class="text-3xl font-bold text-white mb-6">Histórico de Atividades</h2>
+                
+                <div id="historicoContainer" class="w-full space-y-4">
+                    <p class="text-white text-lg text-center">
+                        Carregando seu histórico...
+                    </p>
+                </div>
             </div>
+        </div>
         </div>
         <div id="modalEditarPerfil" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
             <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center modal-anim border-2 border-purple-200 relative">
