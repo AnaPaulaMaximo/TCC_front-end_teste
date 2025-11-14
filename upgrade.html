@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RePensei - Finalizar Pagamento</title>
+    <link rel="stylesheet" href="styles.css"> </head>
+<body>
+    <div class="container">
+        <div class="card-area">
+            <div class="card-display">
+                <div class="card-inner">
+                    <div class="card-front">
+                        <img src="chip.png" alt="Chip" class="chip"> <div class="card-number" id="display-number">XXXX XXXX XXXX XXXX</div>
+                        <div class="card-holder-info">
+                            <span class="card-label">Nome no Cartão</span>
+                            <div class="card-name" id="display-name">NOME DO TITULAR</div>
+                        </div>
+                        <div class="card-expiry-info">
+                            <span class="card-label">Validade</span>
+                            <div class="card-expiry" id="display-expiry">MM/AA</div>
+                        </div>
+                    </div>
+                    <div class="card-back">
+                        <div class="magnetic-strip"></div>
+                        <div class="cvv-area">
+                            <span class="card-label">CVV</span>
+                            <div class="cvv-display" id="display-cvv">***</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="summary-box">
+                <h3>Detalhes do Pedido</h3>
+                <p>Plano Anual: **R$ 149,90**</p>
+                <p>Taxas: R$ 0,00</p>
+                <div class="divider"></div>
+                <p class="total">Total: **R$ 149,90**</p>
+            </div>
+        </div>
+
+        <div class="payment-form">
+            <h2>Finalizar Pagamento</h2>
+            <form id="paymentForm">
+                <div class="input-group">
+                    <label for="cardNumber">Número do Cartão</label>
+                    <input type="text" id="cardNumber" maxlength="19" placeholder="XXXX XXXX XXXX XXXX" required>
+                </div>
+                <div class="input-group">
+                    <label for="cardName">Nome Completo no Cartão</label>
+                    <input type="text" id="cardName" placeholder="Como no cartão" required>
+                </div>
+                <div class="row">
+                    <div class="input-group">
+                        <label for="cardExpiry">Validade (MM/AA)</label>
+                        <input type="text" id="cardExpiry" maxlength="5" placeholder="MM/AA" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="cardCVC">CVV</label>
+                        <input type="text" id="cardCVC" maxlength="4" placeholder="CVC" required>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <button type="submit" class="submit-button">Pagar R$ 149,90</button>
+                </div>
+                <p class="secure-text">Pagamento Seguro | Criptografia SSL</p>
+            </form>
+        </div>
+    </div>
+    <script src="upgrade.js"></script> </body>
+</html>
