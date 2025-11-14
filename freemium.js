@@ -1,3 +1,79 @@
+/**
+ * Exibe uma notificação na tela.
+ * A função cria automaticamente o container de notificações se ele não existir.
+ *
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {string} [type='success'] - O tipo de notificação ('success' ou 'error').
+ */
+function showNotification(message, type = 'success') {
+    // 1. Encontra (ou cria) o container de notificações
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        // Classes Tailwind para o container (fixo no canto superior direito)
+        container.className = 'fixed top-8 right-8 z-[9999] flex flex-col gap-3';
+        document.body.appendChild(container);
+    }
+
+    // 2. Define ícone, cor e título com base no tipo
+    const isError = type === 'error';
+    const iconName = isError ? 'error' : 'check_circle';
+    // Cores alinhadas com seu site: vermelho/pink para erro, roxo para sucesso
+    const iconColor = isError ? 'text-red-600' : 'text-purple-600';
+    const title = isError ? 'Ocorreu um Erro' : 'Sucesso!';
+
+    // 3. Cria o elemento da notificação (o "toast")
+    const toast = document.createElement('div');
+    
+    // 4. Adiciona as classes do Tailwind (aqui está a estética do seu site)
+    // (Fundo branco, bordas arredondadas, sombra, borda leve, etc.)
+    toast.className = 'flex items-start gap-3 w-full max-w-sm p-4 bg-white rounded-xl shadow-lg border border-gray-200 notification-toast-enter';
+    
+    // 5. Define o HTML interno da notificação
+    toast.innerHTML = `
+        <div class="flex-shrink-0">
+            <span class="material-icons ${iconColor}" style="font-size: 24px;">
+                ${iconName}
+            </span>
+        </div>
+        <div class="flex-1 mr-4">
+            <p class="font-semibold text-gray-900">${title}</p>
+            <p class="text-sm text-gray-600">${message}</p>
+        </div>
+        <div class="flex-shrink-0">
+            <button class="text-gray-400 hover:text-gray-600">
+                <span class="material-icons" style="font-size: 20px;">close</span>
+            </button>
+        </div>
+    `;
+
+    // 6. Adiciona ao container
+    container.appendChild(toast);
+
+    // 7. Define o temporizador para remover automaticamente (3 segundos)
+    const timer = setTimeout(() => {
+        toast.classList.remove('notification-toast-enter');
+        toast.classList.add('notification-toast-exit');
+        
+        // Remove do DOM após a animação de saída
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    }, 3000); // 3000ms = 3 segundos
+
+    // 8. Adiciona o evento para o botão de fechar
+    toast.querySelector('button').addEventListener('click', () => {
+        clearTimeout(timer); // Para o timer se for fechado manualmente
+        toast.classList.remove('notification-toast-enter');
+        toast.classList.add('notification-toast-exit');
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    });
+}
+
+
 // URL da sua API refatorada (porta 5002)
 const API_BASE_URL = 'http://127.0.0.1:5000';
 
@@ -184,7 +260,9 @@ async function salvarResultadoQuiz(tema, acertos, totalPerguntas) {
 // =====> NOVA FUNÇÃO DE UPGRADE <=====
 async function handleUpgrade() {
     if (!currentUser || !currentUser.id) {
-        return alert("Você precisa estar logado para fazer o upgrade.");
+        // =====> CORREÇÃO 1 <=====
+        showNotification("Você precisa estar logado para fazer o upgrade.", 'error');
+        return;
     }
 
     const updateData = {
@@ -207,7 +285,6 @@ async function handleUpgrade() {
         }
 
         // 2. Atualizar o sessionStorage
-        // (Não vamos usar alert, como pedido)
         console.log(data.message || "Upgrade realizado com sucesso!");
         
         currentUser.plano = 'premium'; // Atualiza o objeto local
@@ -221,7 +298,8 @@ async function handleUpgrade() {
 
     } catch (error) {
         console.error('Erro ao fazer upgrade:', error);
-        alert(`Erro ao processar o upgrade: ${error.message}`);
+        // =====> CORREÇÃO 2 <=====
+        showNotification(`Erro ao processar o upgrade: ${error.message}`, 'error');
     }
 }
 // ==================================
@@ -270,7 +348,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const novaFotoUrl = document.getElementById('editFotoUrl').value;
 
         if (!novoNome || !novoEmail) {
-            return alert('Nome e E-mail não podem ser vazios.');
+            // =====> CORREÇÃO 3 <=====
+            showNotification('Nome e E-mail não podem ser vazios.', 'error');
+            return;
         }
 
         const updateData = {
@@ -292,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json();
             if (response.ok) {
-                alert(data.message);
+                showNotification(data.message);
                 // Atualiza dados locais e na sessionStorage
                 currentUser.nome = novoNome;
                 currentUser.email = novoEmail;
@@ -308,11 +388,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('topbarLogo').src = currentUser.fotoUrl; // Atualiza foto da topbar
                 fecharEditarPerfil();
             } else {
-                alert(data.error || 'Erro ao salvar alterações.');
+                // =====> CORREÇÃO 4 <=====
+                showNotification(data.error || 'Erro ao salvar alterações.', 'error');
             }
         } catch (error) {
             console.error('Erro ao conectar com a API de edição:', error);
-            alert('Erro ao conectar com o servidor.');
+            // =====> CORREÇÃO 5 <=====
+            showNotification('Erro ao conectar com o servidor.', 'error');
         }
     });
 
@@ -364,11 +446,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     container.appendChild(div);
                 });
             } else {
-                alert(data.error || 'Erro ao gerar flashcards.');
+                // =====> CORREÇÃO 6 <=====
+                showNotification(data.error || 'Erro ao gerar flashcards.', 'error');
             }
         } catch (error) {
             console.error('Erro API de flashcards:', error);
-            alert('Erro ao conectar com o servidor.');
+            // =====> CORREÇÃO 7 <=====
+            showNotification('Erro ao conectar com o servidor.', 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = "Gerar Flashcards";
@@ -481,7 +565,8 @@ document.addEventListener('DOMContentLoaded', () => {
             output.classList.remove("hidden");
             
         } catch (error) {
-            alert("Erro ao gerar quiz: " + error.message);
+            // =====> CORREÇÃO 8 <=====
+            showNotification("Erro ao gerar quiz: " + error.message, 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = "Gerar Quiz";

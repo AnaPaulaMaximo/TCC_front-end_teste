@@ -1,3 +1,79 @@
+/**
+ * Exibe uma notificação na tela.
+ * A função cria automaticamente o container de notificações se ele não existir.
+ *
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {string} [type='success'] - O tipo de notificação ('success' ou 'error').
+ */
+function showNotification(message, type = 'success') {
+    // 1. Encontra (ou cria) o container de notificações
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        // Classes Tailwind para o container (fixo no canto superior direito)
+        container.className = 'fixed top-8 right-8 z-[9999] flex flex-col gap-3';
+        document.body.appendChild(container);
+    }
+
+    // 2. Define ícone, cor e título com base no tipo
+    const isError = type === 'error';
+    const iconName = isError ? 'error' : 'check_circle';
+    // Cores alinhadas com seu site: vermelho/pink para erro, roxo para sucesso
+    const iconColor = isError ? 'text-red-600' : 'text-purple-600';
+    const title = isError ? 'Ocorreu um Erro' : 'Sucesso!';
+
+    // 3. Cria o elemento da notificação (o "toast")
+    const toast = document.createElement('div');
+    
+    // 4. Adiciona as classes do Tailwind (aqui está a estética do seu site)
+    // (Fundo branco, bordas arredondadas, sombra, borda leve, etc.)
+    toast.className = 'flex items-start gap-3 w-full max-w-sm p-4 bg-white rounded-xl shadow-lg border border-gray-200 notification-toast-enter';
+    
+    // 5. Define o HTML interno da notificação
+    toast.innerHTML = `
+        <div class="flex-shrink-0">
+            <span class="material-icons ${iconColor}" style="font-size: 24px;">
+                ${iconName}
+            </span>
+        </div>
+        <div class="flex-1 mr-4">
+            <p class="font-semibold text-gray-900">${title}</p>
+            <p class="text-sm text-gray-600">${message}</p>
+        </div>
+        <div class="flex-shrink-0">
+            <button class="text-gray-400 hover:text-gray-600">
+                <span class="material-icons" style="font-size: 20px;">close</span>
+            </button>
+        </div>
+    `;
+
+    // 6. Adiciona ao container
+    container.appendChild(toast);
+
+    // 7. Define o temporizador para remover automaticamente (3 segundos)
+    const timer = setTimeout(() => {
+        toast.classList.remove('notification-toast-enter');
+        toast.classList.add('notification-toast-exit');
+        
+        // Remove do DOM após a animação de saída
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    }, 3000); // 3000ms = 3 segundos
+
+    // 8. Adiciona o evento para o botão de fechar
+    toast.querySelector('button').addEventListener('click', () => {
+        clearTimeout(timer); // Para o timer se for fechado manualmente
+        toast.classList.remove('notification-toast-enter');
+        toast.classList.add('notification-toast-exit');
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    });
+}
+
+
 // ATENÇÃO: Esta é uma versão "Mock" (de fachada) do admin.js
 // Ela não se conecta ao backend e usa dados falsos para testes.
 
@@ -23,8 +99,15 @@ function checkAdminSession() {
     const adminData = sessionStorage.getItem('currentAdmin');
     if (!adminData) {
         // Se não houver, chuta para a tela de login
-        alert("Você não está logado como admin. Redirecionando...");
-        window.location.href = 'login.html'; 
+        
+        // =====> CORREÇÃO APLICADA AQUI <=====
+        // Trocado 'true' por 'error'
+        showNotification("Você não está logado como admin. Redirecionando...", 'error');
+        // ======================================
+
+        setTimeout(() => {
+            window.location.href = 'login.html'; 
+        }, 1500); // Dá um tempo para a notificação ser lida
     } else {
         // Se houver, preenche o nome
         const admin = JSON.parse(adminData);
@@ -35,7 +118,7 @@ function checkAdminSession() {
 function handleLogout() {
     // Apenas limpa o sessionStorage e redireciona para o login
     sessionStorage.removeItem('currentAdmin');
-    // alert("Logout (teste) realizado com sucesso!"); // <--- ALERTA REMOVIDO
+    // showNotification("Logout (teste) realizado com sucesso!"); // <--- REMOVIDO
     window.location.href = 'login.html'; 
 }
 
@@ -165,15 +248,15 @@ function openModalEdit(aluno) {
 }
 
 function handleSalvarAluno() {
-    // Apenas fecha o modal e dá um alerta
-    alert("Modo de Teste: Dados não foram salvos.");
+    // Apenas fecha o modal e mostra notificação
+    showNotification("Modo de Teste: Dados não foram salvos.");
     document.getElementById('modalAluno').classList.add('hidden');
     // Em um app real, aqui chamaria loadAlunosTable() após o fetch
 }
 
 function handleExcluirAluno(id) {
     if (confirm(`Modo de teste: Você confirma a exclusão do aluno ${id}?`)) {
-        alert("Modo de Teste: Aluno não foi excluído.");
+        showNotification("Modo de Teste: Aluno não foi excluído.");
     }
 }
 

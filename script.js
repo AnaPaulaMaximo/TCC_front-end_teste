@@ -1,3 +1,79 @@
+/**
+ * Exibe uma notificação na tela.
+ * A função cria automaticamente o container de notificações se ele não existir.
+ *
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {string} [type='success'] - O tipo de notificação ('success' ou 'error').
+ */
+function showNotification(message, type = 'success') {
+    // 1. Encontra (ou cria) o container de notificações
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        // Classes Tailwind para o container (fixo no canto superior direito)
+        container.className = 'fixed top-8 right-8 z-[9999] flex flex-col gap-3';
+        document.body.appendChild(container);
+    }
+
+    // 2. Define ícone, cor e título com base no tipo
+    const isError = type === 'error';
+    const iconName = isError ? 'error' : 'check_circle';
+    // Cores alinhadas com seu site: vermelho/pink para erro, roxo para sucesso
+    const iconColor = isError ? 'text-red-600' : 'text-purple-600';
+    const title = isError ? 'Ocorreu um Erro' : 'Sucesso!';
+
+    // 3. Cria o elemento da notificação (o "toast")
+    const toast = document.createElement('div');
+    
+    // 4. Adiciona as classes do Tailwind (aqui está a estética do seu site)
+    // (Fundo branco, bordas arredondadas, sombra, borda leve, etc.)
+    toast.className = 'flex items-start gap-3 w-full max-w-sm p-4 bg-white rounded-xl shadow-lg border border-gray-200 notification-toast-enter';
+    
+    // 5. Define o HTML interno da notificação
+    toast.innerHTML = `
+        <div class="flex-shrink-0">
+            <span class="material-icons ${iconColor}" style="font-size: 24px;">
+                ${iconName}
+            </span>
+        </div>
+        <div class="flex-1 mr-4">
+            <p class="font-semibold text-gray-900">${title}</p>
+            <p class="text-sm text-gray-600">${message}</p>
+        </div>
+        <div class="flex-shrink-0">
+            <button class="text-gray-400 hover:text-gray-600">
+                <span class="material-icons" style="font-size: 20px;">close</span>
+            </button>
+        </div>
+    `;
+
+    // 6. Adiciona ao container
+    container.appendChild(toast);
+
+    // 7. Define o temporizador para remover automaticamente (3 segundos)
+    const timer = setTimeout(() => {
+        toast.classList.remove('notification-toast-enter');
+        toast.classList.add('notification-toast-exit');
+        
+        // Remove do DOM após a animação de saída
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    }, 3000); // 3000ms = 3 segundos
+
+    // 8. Adiciona o evento para o botão de fechar
+    toast.querySelector('button').addEventListener('click', () => {
+        clearTimeout(timer); // Para o timer se for fechado manualmente
+        toast.classList.remove('notification-toast-enter');
+        toast.classList.add('notification-toast-exit');
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    });
+}
+
+
 console.log("carregou")
 
 const btn_chat = document.getElementById('btn-chat')
@@ -164,7 +240,7 @@ function handleLogout() {
     currentUser = { id: null, nome: 'Visitante', email: 'Faça login para continuar', plano: 'freemium', fotoUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' };
     updateUIForPlan();
     showTela('inicio');
-    alert('Você foi desconectado!');
+    showNotification('Você foi desconectado!'); // Sucesso (padrão)
 }
 
 // Carrega usuário da sessão
@@ -277,7 +353,7 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
         });
         const data = await response.json();
         if (response.ok) {
-            alert(data.message);
+            showNotification(data.message); // Sucesso
             // You'll need to adapt the login success logic here similar to login.js
             // Store user data in sessionStorage and potentially redirect or update UI
             sessionStorage.setItem('currentUser', JSON.stringify(data.user)); // Store user data
@@ -292,11 +368,13 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
              }
 
         } else {
-            alert(data.error || 'Erro ao fazer login. Verifique suas credenciais.');
+            // =====> CORREÇÃO 1 <=====
+            showNotification(data.error || 'Erro ao fazer login. Verifique suas credenciais.', 'error');
         }
     } catch (error) {
         console.error('Erro ao conectar com a API de login:', error);
-        alert('Erro ao conectar com o servidor'); //
+        // =====> CORREÇÃO 2 <=====
+        showNotification('Erro ao conectar com o servidor', 'error'); //
     }
 });
 
@@ -307,7 +385,8 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
         const confirmarSenha = document.getElementById('cadastroConfirmarSenha').value;
 
         if (senha !== confirmarSenha) {
-            alert('As senhas não coincidem!');
+            // =====> CORREÇÃO 3 <=====
+            showNotification('As senhas não coincidem!', 'error');
             return;
         }
 
@@ -319,15 +398,17 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
             });
             const data = await response.json();
             if (response.ok) {
-                alert(data.message);
+                showNotification(data.message); // Sucesso
                 fecharCriarConta();
                 abrirLogin();
             } else {
-                alert(data.error || 'Erro ao criar conta.');
+                // =====> CORREÇÃO 4 <=====
+                showNotification(data.error || 'Erro ao criar conta.', 'error');
             }
         } catch (error) {
             console.error('Erro ao conectar com a API de cadastro:', error);
-            alert('Erro ao conectar com o servidor');
+            // =====> CORREÇÃO 5 <=====
+            showNotification('Erro ao conectar com o servidor', 'error');
         }
     });
 
@@ -343,7 +424,8 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
         const novaFotoUrl = document.getElementById('editFotoUrl').value;
 
         if (!novoNome || !novoEmail) {
-            alert('Nome e E-mail não podem ser vazios.');
+            // =====> CORREÇÃO 6 <=====
+            showNotification('Nome e E-mail não podem ser vazios.', 'error');
             return;
         }
 
@@ -358,7 +440,8 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
 
         try {
             if (!currentUser.id) {
-                alert('Nenhum usuário logado para editar.');
+                // =====> CORREÇÃO 7 <=====
+                showNotification('Nenhum usuário logado para editar.', 'error');
                 return;
             }
 
@@ -369,7 +452,7 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
             });
             const data = await response.json();
             if (response.ok) {
-                alert(data.message);
+                showNotification(data.message); // Sucesso
                 currentUser.nome = novoNome;
                 currentUser.email = novoEmail;
                 currentUser.fotoUrl = novaFotoUrl;
@@ -383,11 +466,13 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
                 updateProfileDisplay();
                 fecharEditarPerfil();
             } else {
-                alert(data.error || 'Erro ao salvar alterações.');
+                // =====> CORREÇÃO 8 <=====
+                showNotification(data.error || 'Erro ao salvar alterações.', 'error');
             }
         } catch (error) {
             console.error('Erro ao conectar com a API de edição:', error);
-            alert('Erro ao conectar com o servidor para salvar alterações.');
+            // =====> CORREÇÃO 9 <=====
+            showNotification('Erro ao conectar com o servidor para salvar alterações.', 'error');
         }
     });
 
@@ -405,9 +490,17 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
 
     // Gerar Resumo
     document.getElementById('gerarResumoBtn').addEventListener('click', async () => {
-        if (!currentUser.id) return alert("Você precisa estar logado.");
+        if (!currentUser.id) {
+            // =====> CORREÇÃO 10 <=====
+            showNotification("Você precisa estar logado.", 'error');
+            return;
+        }
         const tema = document.getElementById('resumoInput').value;
-        if (!tema) return alert('Por favor, digite um tema.');
+        if (!tema) {
+            // =====> CORREÇÃO 11 <=====
+            showNotification('Por favor, digite um tema.', 'error');
+            return;
+        }
         
         const btn = document.getElementById('gerarResumoBtn');
         btn.disabled = true;
@@ -425,11 +518,13 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
                 document.getElementById('resumoConteudo').innerHTML = stripMarkdown(data.conteudo).replace(/\n/g, '<br>');
                 document.getElementById('resumoOutput').classList.remove('hidden');
             } else {
-                alert(data.error || 'Erro ao gerar resumo.');
+                // =====> CORREÇÃO 12 <=====
+                showNotification(data.error || 'Erro ao gerar resumo.', 'error');
             }
         } catch (error) {
             console.error('Erro API de resumo:', error);
-            alert('Erro ao conectar com o servidor.');
+            // =====> CORREÇÃO 13 <=====
+            showNotification('Erro ao conectar com o servidor.', 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = "Gerar Resumo";
@@ -438,10 +533,18 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
 
     // Corrigir Texto
     document.getElementById('corrigirTextoBtn').addEventListener('click', async () => {
-        if (!currentUser.id) return alert("Você precisa estar logado.");
+        if (!currentUser.id) {
+            // =====> CORREÇÃO 14 <=====
+            showNotification("Você precisa estar logado.", 'error');
+            return;
+        }
         const tema = document.getElementById('correcaoTemaInput').value;
         const texto = document.getElementById('correcaoTextoInput').value;
-        if (!tema || !texto) return alert('Preencha o tema e o texto.');
+        if (!tema || !texto) {
+            // =====> CORREÇÃO 15 <=====
+            showNotification('Preencha o tema e o texto.', 'error');
+            return;
+        }
         
         const btn = document.getElementById('corrigirTextoBtn');
         btn.disabled = true;
@@ -457,11 +560,13 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
                 document.getElementById('correcaoConteudo').innerHTML = stripMarkdown(data.correcao).replace(/\n/g, '<br>');
                 document.getElementById('correcaoOutput').classList.remove('hidden');
             } else {
-                alert(data.error || 'Erro ao corrigir texto.');
+                // =====> CORREÇÃO 16 <=====
+                showNotification(data.error || 'Erro ao corrigir texto.', 'error');
             }
         } catch (error) {
             console.error('Erro API de correção:', error);
-            alert('Erro ao conectar com o servidor.');
+            // =====> CORREÇÃO 17 <=====
+            showNotification('Erro ao conectar com o servidor.', 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = "Corrigir Texto";
@@ -470,12 +575,20 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
 
     // Gerar Flashcards
     document.getElementById('gerarFlashcardsBtn').addEventListener('click', async () => {
-        if (!currentUser.id) return alert("Você precisa estar logado.");
+        if (!currentUser.id) {
+            // =====> CORREÇÃO 18 <=====
+            showNotification("Você precisa estar logado.", 'error');
+            return;
+        }
         
         let payload = { id_aluno: currentUser.id };
         if (currentUser.plano === 'premium') {
             const tema = document.getElementById('flashcardInput').value;
-            if (!tema) return alert("Digite um tema para os flashcards.");
+            if (!tema) {
+                // =====> CORREÇÃO 19 <=====
+                showNotification("Digite um tema para os flashcards.", 'error');
+                return;
+            }
             payload.tema = tema;
         } else {
             payload.category = document.getElementById('flashcardCategory').value;
@@ -513,11 +626,13 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
                     container.appendChild(div);
                 });
             } else {
-                alert(data.error || 'Erro ao gerar flashcards.');
+                // =====> CORREÇÃO 20 <=====
+                showNotification(data.error || 'Erro ao gerar flashcards.', 'error');
             }
         } catch (error) {
             console.error('Erro API de flashcards:', error);
-            alert('Erro ao conectar com o servidor.');
+            // =====> CORREÇÃO 21 <=====
+            showNotification('Erro ao conectar com o servidor.', 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = "Gerar Flashcards";
@@ -526,12 +641,20 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
 
     // Gerar Quiz
     document.getElementById("gerarQuizBtn").addEventListener("click", async () => {
-        if (!currentUser.id) return alert("Você precisa estar logado.");
+        if (!currentUser.id) {
+            // =====> CORREÇÃO 22 <=====
+            showNotification("Você precisa estar logado.", 'error');
+            return;
+        }
 
         let payload = { id_aluno: currentUser.id };
         if (currentUser.plano === 'premium') {
             const tema = document.getElementById('quizInput').value;
-            if (!tema) return alert("Digite um tema para o quiz.");
+            if (!tema) {
+                // =====> CORREÇÃO 23 <=====
+                showNotification("Digite um tema para o quiz.", 'error');
+                return;
+            }
             payload.tema = tema;
         } else {
             payload.category = document.getElementById('quizCategory').value;
@@ -624,7 +747,8 @@ document.getElementById('entrarBtn').addEventListener('click', async () => {
             output.classList.remove("hidden");
             
         } catch (error) {
-            alert("Erro ao gerar quiz: " + error.message);
+            // =====> CORREÇÃO 24 <=====
+            showNotification("Erro ao gerar quiz: " + error.message, 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = "Gerar Quiz";

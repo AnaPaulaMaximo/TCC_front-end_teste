@@ -1,3 +1,79 @@
+/**
+ * Exibe uma notificação na tela.
+ * A função cria automaticamente o container de notificações se ele não existir.
+ *
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {string} [type='success'] - O tipo de notificação ('success' ou 'error').
+ */
+function showNotification(message, type = 'success') {
+    // 1. Encontra (ou cria) o container de notificações
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        // Classes Tailwind para o container (fixo no canto superior direito)
+        container.className = 'fixed top-8 right-8 z-[9999] flex flex-col gap-3';
+        document.body.appendChild(container);
+    }
+
+    // 2. Define ícone, cor e título com base no tipo
+    const isError = type === 'error';
+    const iconName = isError ? 'error' : 'check_circle';
+    // Cores alinhadas com seu site: vermelho/pink para erro, roxo para sucesso
+    const iconColor = isError ? 'text-red-600' : 'text-purple-600';
+    const title = isError ? 'Ocorreu um Erro' : 'Sucesso!';
+
+    // 3. Cria o elemento da notificação (o "toast")
+    const toast = document.createElement('div');
+    
+    // 4. Adiciona as classes do Tailwind (aqui está a estética do seu site)
+    // (Fundo branco, bordas arredondadas, sombra, borda leve, etc.)
+    toast.className = 'flex items-start gap-3 w-full max-w-sm p-4 bg-white rounded-xl shadow-lg border border-gray-200 notification-toast-enter';
+    
+    // 5. Define o HTML interno da notificação
+    toast.innerHTML = `
+        <div class="flex-shrink-0">
+            <span class="material-icons ${iconColor}" style="font-size: 24px;">
+                ${iconName}
+            </span>
+        </div>
+        <div class="flex-1 mr-4">
+            <p class="font-semibold text-gray-900">${title}</p>
+            <p class="text-sm text-gray-600">${message}</p>
+        </div>
+        <div class="flex-shrink-0">
+            <button class="text-gray-400 hover:text-gray-600">
+                <span class="material-icons" style="font-size: 20px;">close</span>
+            </button>
+        </div>
+    `;
+
+    // 6. Adiciona ao container
+    container.appendChild(toast);
+
+    // 7. Define o temporizador para remover automaticamente (3 segundos)
+    const timer = setTimeout(() => {
+        toast.classList.remove('notification-toast-enter');
+        toast.classList.add('notification-toast-exit');
+        
+        // Remove do DOM após a animação de saída
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    }, 3000); // 3000ms = 3 segundos
+
+    // 8. Adiciona o evento para o botão de fechar
+    toast.querySelector('button').addEventListener('click', () => {
+        clearTimeout(timer); // Para o timer se for fechado manualmente
+        toast.classList.remove('notification-toast-enter');
+        toast.classList.add('notification-toast-exit');
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    });
+}
+
+
 // URL da sua API refatorada (porta 5002)
 const API_BASE_URL = 'http://127.0.0.1:5000';
 const SOCKET_URL = 'http://127.0.0.1:5000';
@@ -413,7 +489,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const novaFotoUrl = document.getElementById('editFotoUrl').value;
 
         if (!novoNome || !novoEmail) {
-            return alert('Nome e E-mail não podem ser vazios.');
+            // =====> CORREÇÃO 1 <=====
+            showNotification('Nome e E-mail não podem ser vazios.', 'error');
+            return;
         }
 
         const updateData = {
@@ -434,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json();
             if (response.ok) {
-                alert(data.message);
+                showNotification(data.message); // Sucesso
                 currentUser.nome = novoNome;
                 currentUser.email = novoEmail;
                 currentUser.fotoUrl = updateData.url_foto;
@@ -449,11 +527,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(document.getElementById('topbarLogo')) document.getElementById('topbarLogo').src = currentUser.fotoUrl;
                 fecharEditarPerfil();
             } else {
-                alert(data.error || 'Erro ao salvar alterações.');
+                // =====> CORREÇÃO 2 <=====
+                showNotification(data.error || 'Erro ao salvar alterações.', 'error');
             }
         } catch (error) {
             console.error('Erro ao conectar com a API de edição:', error);
-            alert('Erro ao conectar com o servidor.');
+            // =====> CORREÇÃO 3 <=====
+            showNotification('Erro ao conectar com o servidor.', 'error');
         }
     });
 
@@ -469,7 +549,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnResumo = document.getElementById('gerarResumoBtn');
     if (btnResumo) btnResumo.addEventListener('click', async () => {
         const tema = document.getElementById('resumoInput').value;
-        if (!tema) return alert('Por favor, digite um tema.');
+        if (!tema) {
+            // =====> CORREÇÃO 4 <=====
+            showNotification('Por favor, digite um tema.', 'error');
+            return;
+        }
         btnResumo.disabled = true;
         btnResumo.textContent = "Gerando...";
         try {
@@ -494,7 +578,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Erro API de resumo:', error);
-            alert(`Erro ao gerar resumo: ${error.message}. Verifique o console.`);
+            // =====> CORREÇÃO 5 <=====
+            showNotification(`Erro ao gerar resumo: ${error.message}. Verifique o console.`, 'error');
             document.getElementById('resumoOutput').classList.add('hidden');
             document.getElementById('resumoConteudo').innerHTML = '';
             document.getElementById('resumoTitulo').textContent = '';
@@ -509,7 +594,11 @@ document.addEventListener('DOMContentLoaded', () => {
      if (btnCorrecao) btnCorrecao.addEventListener('click', async () => {
         const tema = document.getElementById('correcaoTemaInput').value;
         const texto = document.getElementById('correcaoTextoInput').value;
-        if (!tema || !texto) return alert('Preencha o tema e o texto.');
+        if (!tema || !texto) {
+            // =====> CORREÇÃO 6 <=====
+            showNotification('Preencha o tema e o texto.', 'error');
+            return;
+        }
         btnCorrecao.disabled = true;
         btnCorrecao.textContent = "Corrigindo...";
         try {
@@ -533,7 +622,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Erro API de correção:', error);
-            alert(`Erro ao corrigir texto: ${error.message}.`);
+            // =====> CORREÇÃO 7 <=====
+            showNotification(`Erro ao corrigir texto: ${error.message}.`, 'error');
              document.getElementById('correcaoOutput').classList.add('hidden');
              document.getElementById('correcaoConteudo').innerHTML = '';
         } finally {
@@ -546,7 +636,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFlash = document.getElementById('gerarFlashcardsBtn');
     if (btnFlash) btnFlash.addEventListener('click', async () => {
         const tema = document.getElementById('flashcardInput').value;
-        if (!tema) return alert("Digite um tema para os flashcards.");
+        if (!tema) {
+            // =====> CORREÇÃO 8 <=====
+            showNotification("Digite um tema para os flashcards.", 'error');
+            return;
+        }
         const payload = { id_aluno: currentUser.id, tema: tema };
         btnFlash.disabled = true;
         btnFlash.textContent = "Gerando...";
@@ -582,8 +676,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const flashcardBlocks = flashcardText.split(/Pergunta:/i).filter(block => block.trim() !== '');
 
             if (flashcardBlocks.length === 0) {
-                 alert("Nenhum flashcard gerado para este tema ou formato de resposta inesperado.");
-                 console.warn("Conteúdo recebido não continha 'Pergunta:':", flashcardText);
+                // =====> CORREÇÃO 9 <=====
+                showNotification("Nenhum flashcard gerado para este tema ou formato de resposta inesperado.", 'error');
+                console.warn("Conteúdo recebido não continha 'Pergunta:':", flashcardText);
             }
 
             flashcardBlocks.forEach((block, index) => {
@@ -618,7 +713,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Erro API de flashcards:', error);
-            alert(`Erro ao gerar flashcards: ${error.message}.`);
+            // =====> CORREÇÃO 10 <=====
+            showNotification(`Erro ao gerar flashcards: ${error.message}.`, 'error');
         } finally {
             btnFlash.disabled = false;
             btnFlash.textContent = "Gerar Flashcards";
@@ -629,7 +725,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnQuiz = document.getElementById("gerarQuizBtn");
      if(btnQuiz) btnQuiz.addEventListener("click", async () => {
         const tema = document.getElementById('quizInput').value;
-        if (!tema) return alert("Digite um tema para o quiz.");
+        if (!tema) {
+            // =====> CORREÇÃO 11 <=====
+            showNotification("Digite um tema para o quiz.", 'error');
+            return;
+        }
         
         // Salva o tema no botão para usar ao salvar o resultado
         btnQuiz.dataset.tema = tema; 
@@ -691,7 +791,11 @@ document.addEventListener('DOMContentLoaded', () => {
                  throw new Error(`Erro ao interpretar o JSON retornado pela IA: ${e.message}`);
              }
 
-             if (quizJson.length === 0) { alert("Nenhum quiz gerado para este tema ou formato inválido."); return; }
+             if (quizJson.length === 0) { 
+                // =====> CORREÇÃO 12 <=====
+                showNotification("Nenhum quiz gerado para este tema ou formato inválido.", 'error'); 
+                return; 
+             }
 
             let totalQuestoesValidas = 0; 
             let respostasCorretas = 0;
@@ -762,14 +866,17 @@ document.addEventListener('DOMContentLoaded', () => {
             output.classList.remove("hidden"); 
 
              if (totalQuestoesValidas === 0 && quizJson.length > 0) {
-                 alert("O quiz foi gerado pela IA, mas nenhuma questão estava no formato esperado após a análise.");
+                // =====> CORREÇÃO 13 <=====
+                 showNotification("O quiz foi gerado pela IA, mas nenhuma questão estava no formato esperado após a análise.", 'error');
              } else if (totalQuestoesValidas === 0) {
-                  alert("Não foi possível gerar questões válidas para este tema.");
+                // =====> CORREÇÃO 14 <=====
+                  showNotification("Não foi possível gerar questões válidas para este tema.", 'error');
              }
 
         } catch (error) {
             console.error("Erro ao gerar/processar quiz:", error);
-            alert("Erro ao gerar quiz: " + error.message);
+            // =====> CORREÇÃO 15 <=====
+            showNotification("Erro ao gerar quiz: " + error.message, 'error');
         } finally {
             btnQuiz.disabled = false;
             btnQuiz.textContent = "Gerar Quiz";
