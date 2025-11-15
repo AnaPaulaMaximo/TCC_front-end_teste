@@ -205,7 +205,7 @@
             </div>
         </div>
 
-        <div id="tela-historico" class="tela w-full max-w-4xl">
+       <div id="tela-historico" class="tela w-full max-w-4xl">
              <div class="w-full mx-auto p-8 md:p-12 rounded-3xl flex flex-col items-center glass shadow-2xl border-2 border-purple-200">
                 <h2 class="text-3xl font-bold text-white mb-6">Histórico de Atividades</h2>
                 
@@ -216,6 +216,29 @@
                 </div>
             </div>
         </div>
+        </div> <div id="modalEditarPerfil" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+            </div>
+
+        <div id="modalHistorico" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60 hidden p-4">
+            <div class="bg-white rounded-3xl p-6 md:p-8 max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl modal-anim border-2 border-purple-200 relative">
+                <button onclick="fecharHistoricoItem()" class="absolute top-4 right-4 text-purple-400 hover:text-pink-400 text-2xl z-10">
+                    <span class="material-icons">close</span>
+                </button>
+                
+                <h2 id="modalHistoricoTitulo" class="text-2xl md:text-3xl font-extrabold text-purple-800 mb-4 tracking-wide pr-8">
+                    Ver Histórico
+                </h2>
+                
+                <div id="modalHistoricoConteudo" class="flex-1 overflow-y-auto pr-2 text-gray-700">
+                    <p>Carregando...</p>
+                </div>
+                
+                <button onclick="fecharHistoricoItem()" class="btn-secondary mt-6 w-full md:w-auto md:self-end">
+                    Fechar
+                </button>
+            </div>
+        </div>
+        
         </div>
         <div id="modalEditarPerfil" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
             <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center modal-anim border-2 border-purple-200 relative">

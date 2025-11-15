@@ -378,7 +378,94 @@ window.fecharEditarPerfil = function () {
 }
 
 
-// ===> INÍCIO DA NOVA FUNÇÃO <===
+// ===================================
+// INÍCIO - LÓGICA DE HISTÓRICO (MODIFICADA)
+// ===================================
+
+/**
+ * Fecha o modal de visualização de histórico.
+ */
+window.fecharHistoricoItem = function () {
+    const modal = document.getElementById('modalHistorico');
+    if (modal) {
+        modal.classList.add('hidden');
+        // Limpa o conteúdo para a próxima abertura
+        document.getElementById('modalHistoricoTitulo').textContent = 'Ver Histórico';
+        document.getElementById('modalHistoricoConteudo').innerHTML = '<p>Carregando...</p>';
+    }
+}
+
+/**
+ * Busca o conteúdo completo de um item de histórico e o exibe no modal.
+ * @param {object} item - O objeto do item de histórico (com id, tipo_atividade, tema).
+ */
+async function showHistoricoItem(item) {
+    // MODIFICADO: Não checamos mais por 'acertos' aqui,
+    // pois todos os itens vêm da mesma tabela e são clicáveis.
+    
+    const modal = document.getElementById('modalHistorico');
+    const titulo = document.getElementById('modalHistoricoTitulo');
+    const conteudo = document.getElementById('modalHistoricoConteudo');
+    
+    if (!modal || !titulo || !conteudo) {
+        console.error("Modal de histórico ou seus componentes não encontrados.");
+        return;
+    }
+
+    titulo.textContent = 'Carregando...';
+    conteudo.innerHTML = '<p>Buscando dados...</p>';
+    modal.classList.remove('hidden');
+
+    try {
+        // Busca o item completo na API (que consulta a tabela historico_premium)
+        const response = await fetch(`${API_BASE_URL}/premium/historico/item/${item.id}`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Erro ao buscar item do histórico.');
+        }
+
+        // Renderiza o conteúdo no modal com base no tipo
+        const tipoNome = data.tipo_atividade.charAt(0).toUpperCase() + data.tipo_atividade.slice(1);
+        titulo.textContent = `${tipoNome}: ${data.tema}`;
+        
+        if (data.tipo_atividade === 'resumo') {
+            conteudo.innerHTML = `<div class="bg-purple-100 p-4 rounded-lg"><p>${stripMarkdown(data.conteudo_gerado).replace(/\n/g, '<br>')}</p></div>`;
+        
+        } else if (data.tipo_atividade === 'correcao') {
+            conteudo.innerHTML = `
+                <div class="bg-gray-100 p-4 rounded-lg mb-4">
+                    <h4 class="font-semibold text-gray-600 mb-2">Seu Texto Original:</h4>
+                    <p class="italic">${stripMarkdown(data.texto_original).replace(/\n/g, '<br>')}</p>
+                </div>
+                <div class="bg-purple-100 p-4 rounded-lg">
+                    <h4 class="font-semibold text-purple-800 mb-2">Feedback da IA:</h4>
+                    <p>${stripMarkdown(data.conteudo_gerado).replace(/\n/g, '<br>')}</p>
+                </div>
+            `;
+        
+        } else if (data.tipo_atividade === 'flashcard') {
+            conteudo.innerHTML = '<div id="reviewFlashcardsContainer" class="flex flex-wrap gap-4 justify-center w-full"></div>';
+            const fcContainer = conteudo.querySelector('#reviewFlashcardsContainer');
+            // Reutiliza a função de renderização de flashcards
+            renderFlashcards(data.conteudo_gerado, fcContainer);
+        
+        } else if (data.tipo_atividade === 'quiz') {
+            conteudo.innerHTML = ''; // Limpa o "carregando"
+            // MODIFICADO: Passa as respostas do usuário para o renderQuiz
+            const userAnswers = data.respostas_usuario || {};
+            renderQuiz(data.conteudo_gerado, conteudo, false, userAnswers); // false = não interativo
+        }
+
+    } catch (err) {
+        titulo.textContent = 'Erro';
+        conteudo.innerHTML = `<p class="text-red-500">${err.message}</p>`;
+    }
+}
+
+
 /**
  * Busca o histórico de atividades do usuário no backend e renderiza na tela.
  */
@@ -396,7 +483,8 @@ async function fetchHistorico() {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/historico/${currentUser.id}`, {
+        // Chama o endpoint MODIFICADO (que só busca em historico_premium)
+        const response = await fetch(`${API_BASE_URL}/premium/historico/${currentUser.id}`, {
             credentials: 'include' // Envia cookies da sessão
         });
 
@@ -413,15 +501,13 @@ async function fetchHistorico() {
 
         container.innerHTML = ''; // Limpa o "Carregando..."
 
-        // Mapeia os tipos de atividade para ícones do Material Icons
         const iconMap = {
             'quiz': 'quiz',
             'resumo': 'article',
-            'correcao': 'edit_document', // Ícone melhorado
+            'correcao': 'edit_document',
             'flashcard': 'style'
         };
         
-        // Mapeia os tipos para nomes mais amigáveis
         const nameMap = {
             'quiz': 'Quiz',
             'resumo': 'Resumo',
@@ -431,19 +517,19 @@ async function fetchHistorico() {
 
         data.forEach(item => {
             const card = document.createElement('div');
-            // Adiciona um cursor-pointer se quisermos adicionar cliques no futuro
-            card.className = 'bg-white/10 p-4 rounded-lg flex items-center justify-between text-white shadow-md border border-white/20 hover:bg-white/20 transition-all duration-200 cursor-pointer'; 
-            
+            // MODIFICADO: Todos os itens são clicáveis
+            card.className = 'bg-white/10 p-4 rounded-lg flex items-center justify-between text-white shadow-md border border-white/20 transition-all duration-200 cursor-pointer hover:bg-white/20'; 
+            card.addEventListener('click', () => showHistoricoItem(item));
+
             const tipo = item.tipo_atividade || 'desconhecido';
             const icon = iconMap[tipo] || 'history';
-            const nomeAtividade = nameMap[tipo] || 'Atividade';
             
-            // Formata o título e os detalhes
+            const nomeAtividade = nameMap[tipo] || 'Atividade';
             const title = `${nomeAtividade}: ${item.tema || 'Tema não registrado'}`;
-            let details = new Date(item.data_criacao).toLocaleDateString('pt-BR');
+            let details = new Date(item.data_criacao).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-            // Adiciona detalhes específicos do quiz
-            if (tipo === 'quiz') {
+            // MODIFICADO: Adiciona a pontuação se for um quiz
+            if (tipo === 'quiz' && item.acertos !== null) {
                 details += ` - <span class="font-semibold text-pink-300">${item.acertos} / ${item.total_perguntas} acertos</span>`;
             }
 
@@ -466,7 +552,10 @@ async function fetchHistorico() {
         showNotification(`Erro ao carregar histórico: ${error.message}`, 'error');
     }
 }
-// ===> FIM DA NOVA FUNÇÃO <===
+
+// ===================================
+// FIM - LÓGICA DE HISTÓRICO
+// ===================================
 
 
 function showTela(page) {
@@ -499,32 +588,28 @@ function showTela(page) {
     }
 }
 
-// =====> FUNÇÃO DE SALVAR QUIZ (DEFINIDA GLOBALMENTE) <=====
-async function salvarResultadoQuiz(tema, acertos, totalPerguntas) {
+// =====> FUNÇÃO DE SALVAR QUIZ (REMOVIDA) <=====
+// A função salvarResultadoQuiz() foi removida daqui.
+
+// =====> NOVA FUNÇÃO PARA SALVAR QUIZ PREMIUM <=====
+async function salvarResultadoQuizPremium(tema, acertos, totalPerguntas, quizContentJSON, userAnswersObject) {
     if (!currentUser || !currentUser.id) {
         console.warn("Não é possível salvar o resultado: usuário não logado.");
         return;
     }
     
-    // Trata o tema "Ambos" do freemium
-    if (tema === 'ambos') {
-        tema = 'Filosofia e Sociologia';
-    } else if (tema === 'filosofia') {
-        tema = 'Filosofia';
-    } else if (tema === 'sociologia') {
-        tema = 'Sociologia';
-    }
-    // Temas customizados (premium) permanecem como estão
-    
     const payload = {
         id_aluno: currentUser.id,
         tema: tema,
         acertos: acertos,
-        total_perguntas: totalPerguntas
+        total_perguntas: totalPerguntas,
+        conteudo_gerado: quizContentJSON, // O JSON bruto do quiz
+        respostas_usuario: userAnswersObject // O objeto JS com as respostas
     };
 
     try {
-        const response = await fetch(`${API_BASE_URL}/quiz/salvar_resultado`, {
+        // Chama o novo endpoint premium
+        const response = await fetch(`${API_BASE_URL}/premium/quiz/salvar_completo`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -533,14 +618,228 @@ async function salvarResultadoQuiz(tema, acertos, totalPerguntas) {
 
         const data = await response.json();
         if (response.ok) {
-            console.log("Resultado do quiz salvo com sucesso!", data.message);
+            console.log("Resultado do quiz premium salvo com sucesso!", data.message);
         } else {
-            console.error("Falha ao salvar resultado do quiz:", data.error);
+            console.error("Falha ao salvar resultado do quiz premium:", data.error);
+            showNotification(data.error || 'Falha ao salvar quiz no histórico.', 'error');
         }
     } catch (error) {
-        console.error("Erro de rede ao tentar salvar resultado do quiz:", error);
+        console.error("Erro de rede ao tentar salvar resultado do quiz premium:", error);
+        showNotification('Erro de conexão ao salvar quiz no histórico.', 'error');
     }
 }
+// =======================================================
+
+
+// =======================================================
+// INÍCIO - FUNÇÕES DE RENDERIZAÇÃO REUTILIZÁVEIS
+// =======================================================
+
+/**
+ * Renderiza flashcards (premium) a partir do texto da IA.
+ * @param {string} flashcardText - O texto bruto da IA (Pergunta: ... Resposta: ...).
+ * @param {HTMLElement} container - O elemento HTML onde os flashcards serão inseridos.
+ */
+function renderFlashcards(flashcardText, container) {
+    if (!container) return;
+    container.innerHTML = ''; // Limpa o container
+
+    if (!flashcardText || typeof flashcardText !== 'string') {
+        container.innerHTML = '<p class="text-red-500">Erro: Conteúdo do flashcard inválido.</p>';
+        return;
+    }
+    if (flashcardText.includes("NÃO É POSSIVEL FORMAR UMA RESPOSTA")) {
+        container.innerHTML = '<p class="text-red-500">Não é possível gerar flashcards para este tema (inadequado).</p>';
+        return;
+    }
+
+    const flashcardBlocks = flashcardText.split(/Pergunta:/i).filter(block => block.trim() !== '');
+
+    if (flashcardBlocks.length === 0) {
+        container.innerHTML = '<p class="text-gray-500">Nenhum flashcard encontrado no formato esperado.</p>';
+        console.warn("Conteúdo recebido não continha 'Pergunta:':", flashcardText);
+        return;
+    }
+
+    flashcardBlocks.forEach((block, index) => {
+        const parts = block.split(/Resposta:/i);
+        if (parts.length >= 2) {
+            const pergunta = stripMarkdown(parts[0].trim());
+            const resposta = stripMarkdown(parts[1].trim());
+
+            if (pergunta && resposta) { 
+                const div = document.createElement('div');
+                // Ajustado para funcionar bem dentro do modal
+                div.className = 'flashcard w-full sm:w-64 md:w-72 h-48 bg-white rounded-xl shadow-lg cursor-pointer perspective';
+                div.onclick = () => div.classList.toggle('flipped');
+                div.innerHTML = `
+                    <div class="flashcard-inner">
+                        <div class="flashcard-front">
+                            <span class="text-purple-800 text-lg font-semibold text-center">${pergunta}</span>
+                        </div>
+                        <div class="flashcard-back">
+                            <div class="flex flex-col items-center justify-center text-center p-4">
+                                <span class="font-bold text-pink-600">${resposta}</span>
+                                </div>
+                        </div>
+                    </div>`;
+                container.appendChild(div);
+            } else {
+                 console.warn(`Flashcard ${index + 1} inválido (pergunta ou resposta vazia após parse):`, block);
+            }
+         } else {
+            console.warn(`Bloco ${index + 1} não continha 'Resposta:':`, block);
+         }
+    });
+}
+
+/**
+ * Renderiza um quiz (premium) a partir do JSON da IA.
+ * @param {string} quizText - O texto JSON bruto da IA.
+ * @param {HTMLElement} container - O elemento HTML onde o quiz será inserido.
+ * @param {boolean} isInteractive - Se true, habilita cliques, lógica de score e salvamento. Se false, apenas exibe (modo review).
+ * @param {Object} [userAnswersReview=null] - Opcional. Objeto com as respostas do usuário para o modo review.
+ */
+function renderQuiz(quizText, container, isInteractive = true, userAnswersReview = null) {
+    if (!container) return;
+    container.innerHTML = ''; // Limpa
+
+    if (!quizText || typeof quizText !== 'string') {
+        container.innerHTML = '<p class="text-red-500">Erro: Conteúdo do quiz inválido.</p>';
+        return;
+    }
+    if (quizText.includes("NÃO É POSSIVEL FORMAR UMA RESPOSTA")) {
+        container.innerHTML = '<p class="text-red-500">Não é possível gerar quiz para este tema (inadequado).</p>';
+        return;
+    }
+
+    let quizJson = [];
+    try {
+        let textoLimpo = quizText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '').trim();
+        textoLimpo = textoLimpo.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+        const parsedData = JSON.parse(textoLimpo);
+
+        if (Array.isArray(parsedData)) {
+            quizJson = parsedData;
+        } else if (parsedData.quiz && Array.isArray(parsedData.quiz)) {
+            quizJson = parsedData.quiz; 
+        } else {
+            throw new Error("O JSON retornado não é um array de questões.");
+        }
+    } catch (e) {
+        container.innerHTML = `<p class="text-red-500">Erro ao interpretar o quiz da IA: ${e.message}</p>`;
+        console.error("Erro ao parsear JSON do quiz:", e);
+        console.error("Texto recebido da IA:", quizText); 
+        return;
+    }
+
+    if (quizJson.length === 0) { 
+        container.innerHTML = '<p class="text-gray-500">A IA não retornou questões para este tema.</p>';
+        return; 
+    }
+
+    let totalQuestoesValidas = 0; 
+    let respostasCorretas = 0;
+    let respondidas = 0;
+    let userAnswersSession = {}; // Objeto para salvar respostas desta sessão
+    
+    const scoreDisplay = document.getElementById("quizScore");
+    const resultDiv = document.getElementById("quizResult");
+    const btnQuiz = document.getElementById("gerarQuizBtn"); // Para pegar o tema
+    
+    quizJson.forEach((questao, index) => {
+        if (!questao || typeof questao !== 'object' || !questao.pergunta || !questao.opcoes || !Array.isArray(questao.opcoes) || questao.opcoes.length < 2 || !questao.resposta_correta) {
+            console.warn(`Questão ${index + 1} inválida ou incompleta:`, questao); 
+            return; // Pula esta questão
+        }
+        
+        const card = document.createElement("div");
+        card.className = "mb-6 p-4 bg-white rounded-lg shadow w-full card";
+        // Usamos o 'index' original do JSON como chave
+        card.innerHTML = `<p class="quiz-question-number">Pergunta ${totalQuestoesValidas + 1}</p><p class="font-semibold text-lg mb-3">${stripMarkdown(questao.pergunta)}</p>`;
+
+        const opcoesContainer = document.createElement("div");
+        opcoesContainer.className = "space-y-2";
+        const respostaCorretaTexto = stripMarkdown(questao.resposta_correta);
+
+        questao.opcoes.forEach((opcaoTextoOriginal) => {
+            const opcaoTextoLimpo = stripMarkdown(opcaoTextoOriginal); 
+            const opcaoBtn = document.createElement("button");
+            opcaoBtn.className = "quiz-option w-full text-left p-3 border rounded-lg transition";
+            opcaoBtn.textContent = opcaoTextoLimpo;
+
+            if (isInteractive) {
+                opcaoBtn.classList.add("hover:bg-gray-100");
+                opcaoBtn.addEventListener("click", () => {
+                    if (card.classList.contains("card-respondida")) return;
+                    card.classList.add("card-respondida");
+                    respondidas++;
+                    
+                    // Salva a resposta do usuário usando o índice da questão
+                    userAnswersSession[index] = opcaoBtn.textContent;
+
+                    if (opcaoBtn.textContent === respostaCorretaTexto) {
+                        respostasCorretas++;
+                        opcaoBtn.classList.add("correct-answer");
+                    } else {
+                        opcaoBtn.classList.add("wrong-answer");
+                        const corretaBtn = Array.from(opcoesContainer.children).find(btn => btn.textContent === respostaCorretaTexto);
+                        if(corretaBtn) corretaBtn.classList.add("correct-answer");
+                    }
+                    opcoesContainer.querySelectorAll("button").forEach(b => b.disabled = true); 
+
+                    const explanationDiv = card.querySelector('.quiz-explanation');
+                    if (explanationDiv) explanationDiv.classList.remove('hidden');
+
+                    if (respondidas === totalQuestoesValidas) {
+                         if (scoreDisplay) scoreDisplay.textContent = `Você acertou ${respostasCorretas} de ${totalQuestoesValidas} perguntas!`;
+                         if (resultDiv) resultDiv.classList.remove("hidden");
+                         
+                         const temaSalvo = (btnQuiz ? btnQuiz.dataset.tema : null) || questao.tema || "Tema Desconhecido"; 
+                         // CHAMA A NOVA FUNÇÃO DE SALVAR
+                         salvarResultadoQuizPremium(temaSalvo, respostasCorretas, totalQuestoesValidas, quizText, userAnswersSession);
+                    }
+                });
+            } else {
+                // MODO REVISÃO (NÃO INTERATIVO)
+                opcaoBtn.disabled = true;
+                const userAnswer = userAnswersReview ? userAnswersReview[index] : null;
+                
+                if (opcaoTextoLimpo === respostaCorretaTexto) {
+                    opcaoBtn.classList.add("correct-answer");
+                } else if (opcaoTextoLimpo === userAnswer) {
+                    // Se não for a correta, mas foi a que o usuário marcou
+                    opcaoBtn.classList.add("wrong-answer");
+                }
+            }
+            opcoesContainer.appendChild(opcaoBtn);
+        });
+
+        card.appendChild(opcoesContainer);
+
+        if (questao.explicacao) {
+            const explanationDiv = document.createElement('div');
+            // Se não for interativo (modo review), já mostra a explicação
+            explanationDiv.className = `quiz-explanation mt-4 ${!isInteractive ? '' : 'hidden'}`; 
+            explanationDiv.innerHTML = `<strong>Explicação:</strong> ${stripMarkdown(questao.explicacao)}`;
+            card.appendChild(explanationDiv);
+        }
+        container.appendChild(card);
+        totalQuestoesValidas++; // Incrementa só depois de adicionar
+    }); 
+
+    container.classList.remove("hidden"); 
+
+    if (totalQuestoesValidas === 0 && quizJson.length > 0) {
+        showNotification("O quiz foi gerado, mas nenhuma questão estava no formato esperado.", 'error');
+    } else if (totalQuestoesValidas === 0) {
+        showNotification("Não foi possível gerar questões válidas para este tema.", 'error');
+    }
+}
+
+
+// =======================================================
+// FIM - FUNÇÕES DE RENDERIZAÇÃO REUTILIZÁVEIS
 // =======================================================
 
 
@@ -655,9 +954,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Lógica das Ferramentas Premium (IA) ---
-    // (O código de Resumo, Correção, Flashcards e Quiz permanece o mesmo,
-    // pois a lógica de salvar foi adicionada ao backend, exceto pelo quiz
-    // que já chamava salvarResultadoQuiz)
     
      // Gerar Resumo
     const btnResumo = document.getElementById('gerarResumoBtn');
@@ -746,12 +1042,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Gerar Flashcards (Premium)
+    // Gerar Flashcards (Premium) - MODIFICADO para usar a função helper
     const btnFlash = document.getElementById('gerarFlashcardsBtn');
     if (btnFlash) btnFlash.addEventListener('click', async () => {
         const tema = document.getElementById('flashcardInput').value;
         if (!tema) {
-            // =====> CORREÇÃO 8 <=====
             showNotification("Digite um tema para os flashcards.", 'error');
             return;
         }
@@ -776,58 +1071,12 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
                 throw new Error(`Erro HTTP ${response.status}`);
             }
-
-            if (!data.contedo || typeof data.contedo !== 'string') {
-                 console.error("Resposta inesperada da API (flashcard), campo 'contedo' ausente ou inválido:", data);
-                 throw new Error("A IA retornou um formato inválido para flashcards (contedo ausente/inválido).");
-             }
-
-            const flashcardText = data.contedo.trim();
-            if (flashcardText.includes("NÃO É POSSIVEL FORMAR UMA RESPOSTA")) {
-                 throw new Error("Não é possível gerar flashcards para este tema devido à inadequação do assunto.");
-            }
-
-            const flashcardBlocks = flashcardText.split(/Pergunta:/i).filter(block => block.trim() !== '');
-
-            if (flashcardBlocks.length === 0) {
-                // =====> CORREÇÃO 9 <=====
-                showNotification("Nenhum flashcard gerado para este tema ou formato de resposta inesperado.", 'error');
-                console.warn("Conteúdo recebido não continha 'Pergunta:':", flashcardText);
-            }
-
-            flashcardBlocks.forEach((block, index) => {
-                 const parts = block.split(/Resposta:/i);
-                 if (parts.length >= 2) {
-                    const pergunta = stripMarkdown(parts[0].trim());
-                    const resposta = stripMarkdown(parts[1].trim());
-
-                    if (pergunta && resposta) { 
-                        const div = document.createElement('div');
-                        div.className = 'flashcard w-full sm:w-64 md:w-72 lg:w-80 h-48 bg-white rounded-xl shadow-lg cursor-pointer perspective';
-                        div.onclick = () => div.classList.toggle('flipped');
-                        div.innerHTML = `
-                            <div class="flashcard-inner">
-                                <div class="flashcard-front">
-                                    <span class="text-purple-800 text-lg font-semibold text-center">${pergunta}</span>
-                                </div>
-                                <div class="flashcard-back">
-                                    <div class="flex flex-col items-center justify-center text-center p-4">
-                                        <span class="font-bold text-pink-600">${resposta}</span>
-                                        </div>
-                                </div>
-                            </div>`;
-                        container.appendChild(div);
-                    } else {
-                         console.warn(`Flashcard ${index + 1} inválido (pergunta ou resposta vazia após parse):`, block);
-                    }
-                 } else {
-                    console.warn(`Bloco ${index + 1} não continha 'Resposta:':`, block);
-                 }
-            });
+            
+            // Usa a função helper de renderização
+            renderFlashcards(data.contedo, container);
 
         } catch (error) {
             console.error('Erro API de flashcards:', error);
-            // =====> CORREÇÃO 10 <=====
             showNotification(`Erro ao gerar flashcards: ${error.message}.`, 'error');
         } finally {
             btnFlash.disabled = false;
@@ -835,12 +1084,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Gerar Quiz (Premium)
+    // Gerar Quiz (Premium) - MODIFICADO para usar a função helper
     const btnQuiz = document.getElementById("gerarQuizBtn");
      if(btnQuiz) btnQuiz.addEventListener("click", async () => {
         const tema = document.getElementById('quizInput').value;
         if (!tema) {
-            // =====> CORREÇÃO 11 <=====
             showNotification("Digite um tema para o quiz.", 'error');
             return;
         }
@@ -874,122 +1122,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`Erro HTTP ${response.status}`);
             }
 
-             if (!data.contedo || typeof data.contedo !== 'string') {
-                 console.error("Resposta inesperada da API (quiz), campo 'contedo' ausente ou inválido:", data);
-                 throw new Error("A IA retornou um formato inválido para o quiz (contedo ausente/inválido).");
-             }
-
-             const quizText = data.contedo.trim();
-             if (quizText.includes("NÃO É POSSIVEL FORMAR UMA RESPOSTA")) {
-                  throw new Error("Não é possível gerar um quiz para este tema devido à inadequação do assunto.");
-             }
-
-             let quizJson = [];
-             try {
-                 let textoLimpo = quizText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '').trim();
-                 textoLimpo = textoLimpo.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
-                 const parsedData = JSON.parse(textoLimpo);
-
-                 if (Array.isArray(parsedData)) {
-                     quizJson = parsedData;
-                 } else if (parsedData.quiz && Array.isArray(parsedData.quiz)) {
-                      console.warn("Quiz estava aninhado dentro de uma chave 'quiz'. Ajustando.");
-                     quizJson = parsedData.quiz; 
-                 } else {
-                     throw new Error("O JSON retornado não é um array de questões ou um objeto com a chave 'quiz' contendo um array.");
-                 }
-
-             } catch (e) {
-                 console.error("Erro ao parsear JSON do quiz:", e);
-                 console.error("Texto recebido da IA:", quizText); 
-                 throw new Error(`Erro ao interpretar o JSON retornado pela IA: ${e.message}`);
-             }
-
-             if (quizJson.length === 0) { 
-                // =====> CORREÇÃO 12 <=====
-                showNotification("Nenhum quiz gerado para este tema ou formato inválido.", 'error'); 
-                return; 
-             }
-
-            let totalQuestoesValidas = 0; 
-            let respostasCorretas = 0;
-            let respondidas = 0;
-            const scoreDisplay = document.getElementById("quizScore");
-
-            quizJson.forEach((questao, index) => {
-                 if (!questao || typeof questao !== 'object' || !questao.pergunta || !questao.opcoes || !Array.isArray(questao.opcoes) || questao.opcoes.length < 2 || !questao.resposta_correta) {
-                     console.warn(`Questão ${index + 1} inválida ou incompleta:`, questao); return; 
-                 }
-                 totalQuestoesValidas++; 
-
-                const card = document.createElement("div");
-                card.className = "mb-6 p-4 bg-white rounded-lg shadow w-full card";
-                card.innerHTML = `<p class="quiz-question-number">Pergunta ${totalQuestoesValidas}</p><p class="font-semibold text-lg mb-3">${stripMarkdown(questao.pergunta)}</p>`;
-
-                const opcoesContainer = document.createElement("div");
-                opcoesContainer.className = "space-y-2";
-                const respostaCorretaTexto = stripMarkdown(questao.resposta_correta);
-
-                questao.opcoes.forEach((opcaoTextoOriginal) => {
-                     const opcaoTextoLimpo = stripMarkdown(opcaoTextoOriginal); 
-                    const opcaoBtn = document.createElement("button");
-                    opcaoBtn.className = "quiz-option w-full text-left p-3 border rounded-lg hover:bg-gray-100 transition";
-                    opcaoBtn.textContent = opcaoTextoLimpo;
-
-                    opcaoBtn.addEventListener("click", () => {
-                        if (card.classList.contains("card-respondida")) return;
-                        card.classList.add("card-respondida");
-                        respondidas++;
-
-                        if (opcaoBtn.textContent === respostaCorretaTexto) {
-                            respostasCorretas++;
-                            opcaoBtn.classList.add("correct-answer");
-                        } else {
-                            opcaoBtn.classList.add("wrong-answer");
-                            const corretaBtn = Array.from(opcoesContainer.children).find(btn => btn.textContent === respostaCorretaTexto);
-                            if(corretaBtn) corretaBtn.classList.add("correct-answer");
-                        }
-                        opcoesContainer.querySelectorAll("button").forEach(b => b.disabled = true); 
-
-                        const explanationDiv = card.querySelector('.quiz-explanation');
-                        if (explanationDiv) explanationDiv.classList.remove('hidden');
-
-                        if (respondidas === totalQuestoesValidas) {
-                             scoreDisplay.textContent = `Você acertou ${respostasCorretas} de ${totalQuestoesValidas} perguntas!`;
-                             resultDiv.classList.remove("hidden");
-                             
-                             // Pega o tema salvo no botão
-                             const temaSalvo = btnQuiz.dataset.tema || "Tema Desconhecido"; 
-                             salvarResultadoQuiz(temaSalvo, respostasCorretas, totalQuestoesValidas);
-                        }
-                    });
-                    opcoesContainer.appendChild(opcaoBtn);
-                });
-
-                card.appendChild(opcoesContainer);
-
-                if(questao.explicacao){
-                    const explanationDiv = document.createElement('div');
-                    explanationDiv.className = 'quiz-explanation hidden mt-4'; 
-                    explanationDiv.innerHTML = `<strong>Explicação:</strong> ${stripMarkdown(questao.explicacao)}`;
-                    card.appendChild(explanationDiv);
-                }
-                output.appendChild(card);
-            }); 
-
-            output.classList.remove("hidden"); 
-
-             if (totalQuestoesValidas === 0 && quizJson.length > 0) {
-                // =====> CORREÇÃO 13 <=====
-                 showNotification("O quiz foi gerado pela IA, mas nenhuma questão estava no formato esperado após a análise.", 'error');
-             } else if (totalQuestoesValidas === 0) {
-                // =====> CORREÇÃO 14 <=====
-                  showNotification("Não foi possível gerar questões válidas para este tema.", 'error');
-             }
+             // Usa a função helper de renderização
+             renderQuiz(data.contedo, output, true, null); // true = interativo, null = sem respostas de revisão
 
         } catch (error) {
             console.error("Erro ao gerar/processar quiz:", error);
-            // =====> CORREÇÃO 15 <=====
             showNotification("Erro ao gerar quiz: " + error.message, 'error');
         } finally {
             btnQuiz.disabled = false;
@@ -1042,4 +1179,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-}); // Fim do DOMContentLoaded  
+}); // Fim do DOMContentLoaded
