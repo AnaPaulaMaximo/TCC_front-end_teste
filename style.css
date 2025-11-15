@@ -460,3 +460,36 @@
 .card-display.flipped .card-inner {
     transform: rotateY(180deg);
 }
+
+
+
+/* ================== */
+/* NOVOS ESTILOS DE SCROLLBAR */
+/* ================== */
+/* Para navegadores baseados em WebKit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+    width: 12px; /* Largura da barra */
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1); /* Fundo da trilha (levemente transparente) */
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #ffffff, #d946ef); /* Gradiente rosa/pink */
+    border-radius: 10px;
+    border: 2px solid transparent; /* Borda para parecer mais fina */
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, #fefefe, #e879f9); /* Cor mais clara ao passar o mouse */
+    background-clip: content-box;
+}
+
+/* Para Firefox (suporte limitado, mas útil) */
+body {
+  scrollbar-width: thin; /* "thin" ou "auto" */
+  scrollbar-color: #ffffff rgba(242, 145, 230, 0.1); /* Cor do polegar e da trilha */
+}
